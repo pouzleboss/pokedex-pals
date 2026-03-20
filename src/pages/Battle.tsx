@@ -1,8 +1,9 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { cards } from '../data/cards';
 import { EducationalCard as CardType, SUBJECT_COLORS } from '../types/game';
 import { CardMonster } from '../components/CardMonster';
+import { useProgress } from '../hooks/useProgress';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 interface BattleCard extends CardType {
@@ -12,6 +13,13 @@ interface BattleCard extends CardType {
 type Phase = 'select' | 'battle' | 'result';
 type AnswerFeedback = null | 'correct' | 'wrong';
 
+interface Floater {
+  id: number;
+  text: string;
+  color: string; // Tailwind text color class
+  target: 'enemy' | 'player';
+}
+
 // ── Helpers ──────────────────────────────────────────────────────────────────
 function randomEnemy(excludeId: string): BattleCard {
   const pool = cards.filter((c) => c.id !== excludeId);
@@ -19,28 +27,44 @@ function randomEnemy(excludeId: string): BattleCard {
   return { ...base, currentHp: base.hp };
 }
 
-// ── Mini card used in battle arena ───────────────────────────────────────────
-function ArenaCard({
-  card,
-  hit,
-  label,
-}: {
-  card: BattleCard;
-  hit: boolean;
-  label: 'Ennemi' | 'Toi';
-}) {
+// ── Damage floater ────────────────────────────────────────────────────────────
+function DamageFloater({ floater }: { floater: Floater }) {
+  return (
+    <div
+      key={floater.id}
+      className={`absolute pointer-events-none font-extrabold text-xl drop-shadow-lg pop-in z-30 ${floater.color} ${
+        floater.target === 'enemy' ? 'top-2 left-1/2 -translate-x-1/2' : 'bottom-2 left-1/2 -translate-x-1/2'
+      }`}
+    >
+      {floater.text}
+    </div>
+  );
+}
+
+// ── Streak badge ─────────────────────────────────────────────────────────────
+function StreakBadge({ streak }: { streak: number }) {
+  if (streak < 2) return null;
+  const bonus = streak >= 3;
+  return (
+    <div className={`flex items-center justify-center gap-1 rounded-full px-3 py-1 text-xs font-extrabold pop-in ${
+      bonus ? 'bg-orange-500 text-white shadow-lg' : 'bg-orange-100 text-orange-700 border border-orange-300'
+    }`}>
+      🔥 Série x{streak}{bonus ? ' · +50% dégâts !' : ''}
+    </div>
+  );
+}
+
+// ── Arena card (monster + HP bar) ────────────────────────────────────────────
+function ArenaCard({ card, hit, label }: { card: BattleCard; hit: boolean; label: 'Ennemi' | 'Toi' }) {
   const colors = SUBJECT_COLORS[card.subject];
   const hpPct = Math.max(0, (card.currentHp / card.hp) * 100);
   const hpColor = hpPct > 50 ? 'bg-green-400' : hpPct > 25 ? 'bg-yellow-400' : 'bg-red-400';
 
   return (
     <div className="flex items-center gap-3 px-4">
-      {/* Monster */}
       <div className={`flex-shrink-0 w-20 h-20 ${hit ? 'monster-shake' : 'monster-float'}`}>
         <CardMonster cardId={card.id} className="w-full h-full" />
       </div>
-
-      {/* Info */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between mb-1">
           <span className="text-white/60 text-[10px] font-bold uppercase tracking-wider">{label}</span>
@@ -64,7 +88,7 @@ function ArenaCard({
   );
 }
 
-// ── Mini preview card for selection screen ───────────────────────────────────
+// ── Mini selection card ───────────────────────────────────────────────────────
 function SelectCard({ card, onSelect }: { card: CardType; onSelect: () => void }) {
   const colors = SUBJECT_COLORS[card.subject];
   return (
@@ -91,6 +115,9 @@ function SelectCard({ card, onSelect }: { card: CardType; onSelect: () => void }
 // ── Main Battle component ─────────────────────────────────────────────────────
 export default function Battle() {
   const navigate = useNavigate();
+  const { recordBattle } = useProgress();
+  const floaterIdRef = useRef(0);
+
   const [phase, setPhase] = useState<Phase>('select');
   const [playerCard, setPlayerCard] = useState<BattleCard | null>(null);
   const [enemyCard, setEnemyCard] = useState<BattleCard | null>(null);
@@ -100,16 +127,26 @@ export default function Battle() {
   const [winner, setWinner] = useState<'player' | 'enemy' | null>(null);
   const [playerHit, setPlayerHit] = useState(false);
   const [enemyHit, setEnemyHit] = useState(false);
+  const [streak, setStreak] = useState(0);
+  const [floaters, setFloaters] = useState<Floater[]>([]);
+  const [resultRecorded, setResultRecorded] = useState(false);
+
+  const addFloater = useCallback((text: string, color: string, target: 'enemy' | 'player') => {
+    const id = ++floaterIdRef.current;
+    setFloaters((prev) => [...prev, { id, text, color, target }]);
+    setTimeout(() => setFloaters((prev) => prev.filter((f) => f.id !== id)), 1000);
+  }, []);
 
   const selectCard = useCallback((card: CardType) => {
-    const player: BattleCard = { ...card, currentHp: card.hp };
-    const enemy = randomEnemy(card.id);
-    setPlayerCard(player);
-    setEnemyCard(enemy);
+    setPlayerCard({ ...card, currentHp: card.hp });
+    setEnemyCard(randomEnemy(card.id));
     setAttackIndex(0);
     setFeedback(null);
     setChosenIndex(null);
     setWinner(null);
+    setStreak(0);
+    setFloaters([]);
+    setResultRecorded(false);
     setPhase('battle');
   }, []);
 
@@ -119,45 +156,51 @@ export default function Battle() {
 
       const attack = playerCard.attacks[attackIndex % playerCard.attacks.length];
       const correct = chosen === attack.correctIndex;
+      const newStreak = correct ? streak + 1 : 0;
+      const multiplier = correct && streak >= 2 ? 1.5 : 1;
+      const damage = Math.round(attack.damage * multiplier);
 
       setChosenIndex(chosen);
       setFeedback(correct ? 'correct' : 'wrong');
+      setStreak(newStreak);
 
       if (correct) {
         setEnemyHit(true);
-        const newEnemyHp = Math.max(0, enemyCard.currentHp - attack.damage);
+        addFloater(`-${damage} 💥`, 'text-red-400', 'enemy');
         setTimeout(() => setEnemyHit(false), 600);
+
+        const newEnemyHp = Math.max(0, enemyCard.currentHp - damage);
         setTimeout(() => {
           setEnemyCard((prev) => (prev ? { ...prev, currentHp: newEnemyHp } : null));
           if (newEnemyHp <= 0) {
             setWinner('player');
-            setTimeout(() => setPhase('result'), 800);
+            setTimeout(() => setPhase('result'), 600);
             return;
           }
-          // Next turn
           setAttackIndex((i) => i + 1);
           setFeedback(null);
           setChosenIndex(null);
         }, 1200);
       } else {
         setPlayerHit(true);
-        const newPlayerHp = Math.max(0, playerCard.currentHp - attack.damage);
+        addFloater(`-${attack.damage} 💔`, 'text-pink-400', 'player');
         setTimeout(() => setPlayerHit(false), 600);
+
+        const newPlayerHp = Math.max(0, playerCard.currentHp - attack.damage);
         setTimeout(() => {
           setPlayerCard((prev) => (prev ? { ...prev, currentHp: newPlayerHp } : null));
           if (newPlayerHp <= 0) {
             setWinner('enemy');
-            setTimeout(() => setPhase('result'), 800);
+            setTimeout(() => setPhase('result'), 600);
             return;
           }
-          // Next turn
           setAttackIndex((i) => i + 1);
           setFeedback(null);
           setChosenIndex(null);
         }, 1200);
       }
     },
-    [playerCard, enemyCard, attackIndex, feedback],
+    [playerCard, enemyCard, attackIndex, feedback, streak, addFloater],
   );
 
   // ── SELECT PHASE ─────────────────────────────────────────────────────────
@@ -183,37 +226,35 @@ export default function Battle() {
   // ── RESULT PHASE ─────────────────────────────────────────────────────────
   if (phase === 'result') {
     const won = winner === 'player';
-    const loser = won ? enemyCard : playerCard;
-    const winner_card = won ? playerCard : enemyCard;
+    // Record once
+    if (!resultRecorded) {
+      recordBattle(won);
+      setResultRecorded(true);
+    }
 
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 to-purple-900 flex flex-col items-center justify-center p-6 text-center">
-        <div className={`text-7xl mb-3 pop-in`}>{won ? '🏆' : '💀'}</div>
+        <div className="text-7xl mb-3 pop-in">{won ? '🏆' : '💀'}</div>
 
         <h2 className="text-3xl font-extrabold text-white mb-1 slide-up">
           {won ? 'VICTOIRE !' : 'DÉFAITE…'}
         </h2>
         <p className="text-purple-300 mb-6 slide-up">
-          {won
-            ? `Tu as mis K.O. ${enemyCard?.name} !`
-            : `${enemyCard?.name} t'a eu cette fois !`}
+          {won ? `Tu as mis K.O. ${enemyCard?.name} !` : `${enemyCard?.name} t'a eu cette fois !`}
         </p>
 
-        {/* Winner monster */}
-        {winner_card && (
+        {/* Winning monster */}
+        {(won ? playerCard : enemyCard) && (
           <div className="mb-4 monster-float pop-in">
-            <CardMonster cardId={winner_card.id} className="w-32 h-32 mx-auto" />
+            <CardMonster cardId={(won ? playerCard! : enemyCard!).id} className="w-32 h-32 mx-auto" />
           </div>
         )}
 
-        {/* Stars */}
-        <div
-          className={`rounded-2xl px-6 py-3 mb-8 border pop-in ${
-            won
-              ? 'bg-yellow-400/20 border-yellow-400 text-yellow-300'
-              : 'bg-white/10 border-white/20 text-white/70'
-          }`}
-        >
+        <div className={`rounded-2xl px-6 py-3 mb-8 border pop-in ${
+          won
+            ? 'bg-yellow-400/20 border-yellow-400 text-yellow-300'
+            : 'bg-white/10 border-white/20 text-white/60'
+        }`}>
           <p className="text-2xl font-extrabold">{won ? '⭐ ⭐ ⭐' : '☆ ☆ ☆'}</p>
           <p className="text-sm font-semibold mt-1">
             {won ? 'Bravo, tu es un champion !' : 'Entraîne-toi encore !'}
@@ -244,7 +285,11 @@ export default function Battle() {
   const attack = playerCard.attacks[attackIndex % playerCard.attacks.length];
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-800 via-purple-900 to-slate-900 flex flex-col overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-b from-slate-800 via-purple-900 to-slate-900 flex flex-col overflow-hidden relative">
+
+      {/* Damage floaters (absolute, full-screen) */}
+      {floaters.map((f) => <DamageFloater key={f.id} floater={f} />)}
+
       {/* Top bar */}
       <div className="flex items-center justify-between px-4 py-2 flex-shrink-0">
         <button
@@ -262,22 +307,32 @@ export default function Battle() {
         <ArenaCard card={enemyCard} hit={enemyHit} label="Ennemi" />
       </div>
 
-      {/* VS divider */}
+      {/* Divider */}
       <div className="flex items-center gap-2 px-6 my-1 flex-shrink-0">
         <div className="flex-1 h-px bg-white/10" />
-        <span className="text-white/40 text-xs font-bold">VS</span>
+        <span className="text-white/30 text-xs font-bold">VS</span>
         <div className="flex-1 h-px bg-white/10" />
       </div>
 
       {/* Question zone */}
       <div className="mx-3 my-2 flex-shrink-0">
         <div className="bg-white rounded-2xl p-3 shadow-2xl">
+
+          {/* Streak badge */}
+          {streak >= 2 && (
+            <div className="mb-2">
+              <StreakBadge streak={streak} />
+            </div>
+          )}
+
           <div className="flex items-center gap-2 mb-2">
             <span className="text-xs font-extrabold text-purple-600">⚡ {attack.name}</span>
             <span className="ml-auto text-xs font-bold text-red-500 bg-red-50 px-2 py-0.5 rounded-full">
-              {attack.damage} dégâts
+              {streak >= 2 ? Math.round(attack.damage * 1.5) : attack.damage} dégâts
+              {streak >= 2 && <span className="text-orange-500"> 🔥</span>}
             </span>
           </div>
+
           <p className="text-sm font-semibold text-gray-800 mb-3 leading-snug">{attack.question}</p>
 
           <div className="grid grid-cols-2 gap-2">
@@ -305,21 +360,20 @@ export default function Battle() {
             })}
           </div>
 
-          {/* Feedback message */}
           {feedback === 'correct' && (
             <p className="text-center text-green-600 font-extrabold text-sm mt-2 pop-in">
-              ✅ +{attack.damage} dégâts à l'ennemi !
+              ✅ {streak >= 3 ? `Série x${streak} !` : 'Bien joué !'} −{streak >= 2 ? Math.round(attack.damage * 1.5) : attack.damage} PV à l'ennemi !
             </p>
           )}
           {feedback === 'wrong' && (
             <p className="text-center text-red-600 font-extrabold text-sm mt-2 pop-in">
-              ❌ -{attack.damage} PV perdus…
+              ❌ Raté… −{attack.damage} PV perdus.
             </p>
           )}
         </div>
       </div>
 
-      {/* VS divider */}
+      {/* Divider */}
       <div className="flex items-center gap-2 px-6 my-1 flex-shrink-0">
         <div className="flex-1 h-px bg-white/10" />
         <div className="flex-1 h-px bg-white/10" />

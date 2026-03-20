@@ -13,9 +13,12 @@ interface Props {
   flipped?: boolean;
   onClick?: () => void;
   showAttacks?: boolean;
+  /** 0–3 stars earned via the progress system */
+  stars?: 0 | 1 | 2 | 3;
+  /** Called whenever the player correctly answers an attack question */
+  onCorrectAnswer?: (attackIndex: number) => void;
 }
 
-// Animation class based on subject
 const MONSTER_ANIM: Record<string, string> = {
   maths: 'monster-float',
   sciences: 'monster-float-slow',
@@ -23,9 +26,15 @@ const MONSTER_ANIM: Record<string, string> = {
   langues: 'monster-float-slow',
 };
 
-export function EducationalCard({ card, flipped = false, onClick, showAttacks = false }: Props) {
+export function EducationalCard({
+  card,
+  flipped = false,
+  onClick,
+  showAttacks = false,
+  stars = 0,
+  onCorrectAnswer,
+}: Props) {
   const [isFlipped, setIsFlipped] = useState(flipped);
-  // answeredMap: attackIndex → chosen answer index
   const [answeredMap, setAnsweredMap] = useState<Record<number, number>>({});
   const colors = SUBJECT_COLORS[card.subject];
   const hpPercent = card.currentHp !== undefined ? (card.currentHp / card.hp) * 100 : 100;
@@ -37,19 +46,23 @@ export function EducationalCard({ card, flipped = false, onClick, showAttacks = 
       onClick();
     } else {
       setIsFlipped((prev) => {
-        if (prev) setAnsweredMap({}); // reset quiz when flipping back to front
+        if (prev) setAnsweredMap({});
         return !prev;
       });
     }
   };
 
   const handleAnswer = (e: React.MouseEvent, attackIdx: number, answerIdx: number) => {
-    e.stopPropagation(); // don't flip the card
-    if (answeredMap[attackIdx] !== undefined) return; // already answered
+    e.stopPropagation();
+    if (answeredMap[attackIdx] !== undefined) return;
     setAnsweredMap((prev) => ({ ...prev, [attackIdx]: answerIdx }));
+    if (answerIdx === card.attacks[attackIdx].correctIndex) {
+      onCorrectAnswer?.(attackIdx);
+    }
   };
 
   const anim = MONSTER_ANIM[card.subject] ?? 'monster-float';
+  const isMastered = stars === 3;
 
   return (
     <div
@@ -70,9 +83,24 @@ export function EducationalCard({ card, flipped = false, onClick, showAttacks = 
       >
         {/* ── FACE AVANT ── */}
         <div
-          className={`absolute inset-0 rounded-2xl border-4 ${colors.border} shadow-xl overflow-hidden flex flex-col`}
+          className={`absolute inset-0 rounded-2xl border-4 ${colors.border} shadow-xl overflow-hidden flex flex-col ${
+            isMastered ? 'ring-2 ring-yellow-400 ring-offset-1' : ''
+          }`}
           style={{ backfaceVisibility: 'hidden' }}
         >
+          {/* Mastery badge */}
+          {stars > 0 && (
+            <div
+              className={`absolute top-1 right-1 z-10 rounded-full px-1.5 py-0.5 text-[10px] font-extrabold shadow leading-none ${
+                isMastered
+                  ? 'bg-yellow-400 text-yellow-900'
+                  : 'bg-white/90 text-yellow-500 border border-yellow-300'
+              }`}
+            >
+              {'⭐'.repeat(stars)}
+            </div>
+          )}
+
           {/* En-tête */}
           <div className={`bg-gradient-to-b ${colors.bg} px-2 pt-2 pb-1`}>
             <div className="flex justify-between items-center mb-1">
@@ -88,7 +116,7 @@ export function EducationalCard({ card, flipped = false, onClick, showAttacks = 
             </p>
           </div>
 
-          {/* Illustration — monstre animé */}
+          {/* Illustration */}
           <div
             className="bg-white/90 mx-2 mt-1.5 rounded-xl border-2 border-gray-200 overflow-hidden flex-shrink-0 flex items-center justify-center"
             style={{ height: '38%' }}
@@ -107,7 +135,7 @@ export function EducationalCard({ card, flipped = false, onClick, showAttacks = 
               </span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-1.5 mb-1">
-              <div className={`${hpBarColor} h-1.5 rounded-full transition-all duration-300`} style={{ width: `${hpPercent}%` }} />
+              <div className={`${hpBarColor} h-1.5 rounded-full transition-all`} style={{ width: `${hpPercent}%` }} />
             </div>
             <p className="text-[10px] text-gray-700 leading-tight mb-1 line-clamp-2 flex-shrink-0">
               {card.description}
@@ -124,7 +152,9 @@ export function EducationalCard({ card, flipped = false, onClick, showAttacks = 
 
           {/* Pied */}
           <div className={`bg-gradient-to-b ${colors.bg} text-center py-0.5`}>
-            <span className="text-white text-[9px] font-medium opacity-80">Appuie pour le quiz !</span>
+            <span className="text-white text-[9px] font-medium opacity-80">
+              {isMastered ? '🏆 Maîtrisée !' : 'Appuie pour le quiz !'}
+            </span>
           </div>
         </div>
 
@@ -167,8 +197,7 @@ export function EducationalCard({ card, flipped = false, onClick, showAttacks = 
                           btnStyle = 'bg-green-200 border-green-500 text-green-900 font-bold';
                         else if (j === chosen)
                           btnStyle = 'bg-red-200 border-red-500 text-red-900 line-through opacity-70';
-                        else
-                          btnStyle = 'bg-white border-gray-200 text-gray-400 opacity-50';
+                        else btnStyle = 'bg-white border-gray-200 text-gray-400 opacity-50';
                       }
                       return (
                         <button
@@ -195,7 +224,6 @@ export function EducationalCard({ card, flipped = false, onClick, showAttacks = 
             })}
           </div>
 
-          {/* Retour */}
           <div className={`bg-gradient-to-b ${colors.bg} text-center py-0.5`}>
             <span className="text-white text-[9px] font-medium opacity-80">Appuie pour retourner</span>
           </div>
