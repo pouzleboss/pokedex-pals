@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { EducationalCard } from '../components/EducationalCard';
 import { cards } from '../data/cards';
 import { Subject, SUBJECT_LABELS, LEVEL_LABELS, SchoolLevel } from '../types/game';
@@ -23,6 +24,7 @@ const LEVEL_OPTIONS: { value: LevelFilter; label: string }[] = [
 ];
 
 const Index = () => {
+  const navigate = useNavigate();
   const [subjectFilter, setSubjectFilter] = useState<SubjectFilter>('all');
   const [levelFilter, setLevelFilter] = useState<LevelFilter>('all');
 
@@ -46,7 +48,10 @@ const Index = () => {
               Apprends en jouant avec tes cartes !
             </p>
           </div>
-          <button className="bg-yellow-400 active:bg-yellow-300 text-yellow-900 font-extrabold px-4 py-2 rounded-full text-sm shadow-md active:scale-95 transition-transform whitespace-nowrap">
+          <button
+            onClick={() => navigate('/battle')}
+            className="bg-yellow-400 active:bg-yellow-300 text-yellow-900 font-extrabold px-4 py-2 rounded-full text-sm shadow-md active:scale-95 transition-transform whitespace-nowrap"
+          >
             ⚔️ Bataille
           </button>
         </div>

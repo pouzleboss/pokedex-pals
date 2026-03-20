@@ -15,30 +15,50 @@ interface Props {
   showAttacks?: boolean;
 }
 
+// Animation class based on subject
+const MONSTER_ANIM: Record<string, string> = {
+  maths: 'monster-float',
+  sciences: 'monster-float-slow',
+  histoire: 'monster-float',
+  langues: 'monster-float-slow',
+};
+
 export function EducationalCard({ card, flipped = false, onClick, showAttacks = false }: Props) {
   const [isFlipped, setIsFlipped] = useState(flipped);
+  // answeredMap: attackIndex → chosen answer index
+  const [answeredMap, setAnsweredMap] = useState<Record<number, number>>({});
   const colors = SUBJECT_COLORS[card.subject];
   const hpPercent = card.currentHp !== undefined ? (card.currentHp / card.hp) * 100 : 100;
-
   const hpBarColor =
     hpPercent > 50 ? 'bg-green-500' : hpPercent > 25 ? 'bg-yellow-500' : 'bg-red-500';
 
-  const handleClick = () => {
+  const handleCardClick = () => {
     if (onClick) {
       onClick();
     } else {
-      setIsFlipped((prev) => !prev);
+      setIsFlipped((prev) => {
+        if (prev) setAnsweredMap({}); // reset quiz when flipping back to front
+        return !prev;
+      });
     }
   };
+
+  const handleAnswer = (e: React.MouseEvent, attackIdx: number, answerIdx: number) => {
+    e.stopPropagation(); // don't flip the card
+    if (answeredMap[attackIdx] !== undefined) return; // already answered
+    setAnsweredMap((prev) => ({ ...prev, [attackIdx]: answerIdx }));
+  };
+
+  const anim = MONSTER_ANIM[card.subject] ?? 'monster-float';
 
   return (
     <div
       className="relative w-full cursor-pointer select-none"
       style={{ perspective: '1000px', aspectRatio: '2/3' }}
-      onClick={handleClick}
+      onClick={handleCardClick}
       role="button"
       tabIndex={0}
-      onKeyDown={(e) => e.key === 'Enter' && handleClick()}
+      onKeyDown={(e) => e.key === 'Enter' && handleCardClick()}
       aria-label={`Carte ${card.name}`}
     >
       <div
@@ -68,36 +88,30 @@ export function EducationalCard({ card, flipped = false, onClick, showAttacks = 
             </p>
           </div>
 
-          {/* Illustration — monstre SVG */}
-          <div className="bg-white/90 mx-2 mt-1.5 rounded-xl border-2 border-gray-200 overflow-hidden flex-shrink-0"
-            style={{ height: '38%' }}>
-            <CardMonster cardId={card.id} className="w-full h-full" />
+          {/* Illustration — monstre animé */}
+          <div
+            className="bg-white/90 mx-2 mt-1.5 rounded-xl border-2 border-gray-200 overflow-hidden flex-shrink-0 flex items-center justify-center"
+            style={{ height: '38%' }}
+          >
+            <div className={`w-full h-full ${anim}`}>
+              <CardMonster cardId={card.id} className="w-full h-full" />
+            </div>
           </div>
 
           {/* Corps */}
           <div className="bg-amber-50 px-2 pt-1 pb-1 flex flex-col flex-1 min-h-0">
-            {/* Rareté & HP */}
             <div className="flex justify-between items-center mb-0.5">
               <span className="text-[10px] leading-none">{DIFFICULTY_STARS[card.difficulty]}</span>
               <span className="text-[10px] font-bold text-gray-700 leading-none">
                 PV {card.currentHp ?? card.hp}/{card.hp}
               </span>
             </div>
-
-            {/* Barre HP */}
             <div className="w-full bg-gray-200 rounded-full h-1.5 mb-1">
-              <div
-                className={`${hpBarColor} h-1.5 rounded-full transition-all duration-300`}
-                style={{ width: `${hpPercent}%` }}
-              />
+              <div className={`${hpBarColor} h-1.5 rounded-full transition-all duration-300`} style={{ width: `${hpPercent}%` }} />
             </div>
-
-            {/* Description */}
             <p className="text-[10px] text-gray-700 leading-tight mb-1 line-clamp-2 flex-shrink-0">
               {card.description}
             </p>
-
-            {/* Attaques */}
             <div className="flex flex-col gap-0.5 overflow-hidden">
               {(showAttacks ? card.attacks : card.attacks.slice(0, 1)).map((attack, i) => (
                 <div key={i} className="flex justify-between items-center bg-white/70 rounded-lg px-1.5 py-0.5">
@@ -110,11 +124,11 @@ export function EducationalCard({ card, flipped = false, onClick, showAttacks = 
 
           {/* Pied */}
           <div className={`bg-gradient-to-b ${colors.bg} text-center py-0.5`}>
-            <span className="text-white text-[9px] font-medium opacity-80">Appuie pour voir</span>
+            <span className="text-white text-[9px] font-medium opacity-80">Appuie pour le quiz !</span>
           </div>
         </div>
 
-        {/* ── FACE ARRIÈRE (questions) ── */}
+        {/* ── FACE ARRIÈRE — quiz interactif ── */}
         <div
           className={`absolute inset-0 rounded-2xl border-4 ${colors.border} shadow-xl overflow-hidden bg-white flex flex-col`}
           style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
@@ -124,24 +138,66 @@ export function EducationalCard({ card, flipped = false, onClick, showAttacks = 
           </div>
 
           <div className="p-2 flex flex-col gap-1.5 flex-1 overflow-auto">
-            {card.attacks.map((attack, i) => (
-              <div key={i} className="bg-gray-50 rounded-xl border border-gray-200 p-2">
-                <p className="text-[10px] font-bold text-gray-800 mb-1">
-                  ⚡ {attack.name} ({attack.damage} dégâts)
-                </p>
-                <p className="text-[10px] text-gray-700 mb-1.5">{attack.question}</p>
-                <div className="grid grid-cols-2 gap-1">
-                  {attack.answers.map((ans, j) => (
-                    <span
-                      key={j}
-                      className="text-[9px] bg-white border border-gray-300 rounded-lg px-1 py-0.5 text-center text-gray-700"
-                    >
-                      {String.fromCharCode(65 + j)}. {ans}
-                    </span>
-                  ))}
+            {card.attacks.map((attack, i) => {
+              const chosen = answeredMap[i];
+              const isAnswered = chosen !== undefined;
+              const isCorrect = isAnswered && chosen === attack.correctIndex;
+
+              return (
+                <div
+                  key={i}
+                  className={`rounded-xl border p-2 transition-colors ${
+                    isAnswered
+                      ? isCorrect
+                        ? 'bg-green-50 border-green-300'
+                        : 'bg-red-50 border-red-300'
+                      : 'bg-gray-50 border-gray-200'
+                  }`}
+                >
+                  <p className="text-[10px] font-bold text-gray-800 mb-1">
+                    ⚡ {attack.name} · <span className="text-red-600">{attack.damage} dégâts</span>
+                  </p>
+                  <p className="text-[10px] text-gray-700 mb-1.5">{attack.question}</p>
+
+                  <div className="grid grid-cols-2 gap-1">
+                    {attack.answers.map((ans, j) => {
+                      let btnStyle = 'bg-white border-gray-300 text-gray-700 active:scale-95';
+                      if (isAnswered) {
+                        if (j === attack.correctIndex)
+                          btnStyle = 'bg-green-200 border-green-500 text-green-900 font-bold';
+                        else if (j === chosen)
+                          btnStyle = 'bg-red-200 border-red-500 text-red-900 line-through opacity-70';
+                        else
+                          btnStyle = 'bg-white border-gray-200 text-gray-400 opacity-50';
+                      }
+                      return (
+                        <button
+                          key={j}
+                          disabled={isAnswered}
+                          onClick={(e) => handleAnswer(e, i, j)}
+                          className={`border-2 rounded-lg px-1 py-1 text-[9px] text-left transition-all ${btnStyle}`}
+                        >
+                          <span className="font-bold">{String.fromCharCode(65 + j)}.</span> {ans}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {isAnswered && (
+                    <p className={`text-[9px] font-bold text-center mt-1 pop-in ${isCorrect ? 'text-green-600' : 'text-red-600'}`}>
+                      {isCorrect
+                        ? `✅ Correct ! +${attack.damage} dégâts`
+                        : `❌ Bonne réponse : ${String.fromCharCode(65 + attack.correctIndex)}`}
+                    </p>
+                  )}
                 </div>
-              </div>
-            ))}
+              );
+            })}
+          </div>
+
+          {/* Retour */}
+          <div className={`bg-gradient-to-b ${colors.bg} text-center py-0.5`}>
+            <span className="text-white text-[9px] font-medium opacity-80">Appuie pour retourner</span>
           </div>
         </div>
       </div>
