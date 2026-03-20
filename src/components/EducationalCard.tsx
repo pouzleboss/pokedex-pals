@@ -6,6 +6,7 @@ import {
   DIFFICULTY_STARS,
   LEVEL_LABELS,
 } from '../types/game';
+import { CardMonster } from './CardMonster';
 
 interface Props {
   card: CardType;
@@ -32,8 +33,8 @@ export function EducationalCard({ card, flipped = false, onClick, showAttacks = 
 
   return (
     <div
-      className="relative w-48 h-72 cursor-pointer select-none"
-      style={{ perspective: '1000px' }}
+      className="relative w-full cursor-pointer select-none"
+      style={{ perspective: '1000px', aspectRatio: '2/3' }}
       onClick={handleClick}
       role="button"
       tabIndex={0}
@@ -49,90 +50,91 @@ export function EducationalCard({ card, flipped = false, onClick, showAttacks = 
       >
         {/* ── FACE AVANT ── */}
         <div
-          className={`absolute inset-0 rounded-2xl border-4 ${colors.border} shadow-xl overflow-hidden`}
+          className={`absolute inset-0 rounded-2xl border-4 ${colors.border} shadow-xl overflow-hidden flex flex-col`}
           style={{ backfaceVisibility: 'hidden' }}
         >
-          {/* En-tête coloré */}
-          <div className={`bg-gradient-to-b ${colors.bg} p-2`}>
+          {/* En-tête */}
+          <div className={`bg-gradient-to-b ${colors.bg} px-2 pt-2 pb-1`}>
             <div className="flex justify-between items-center mb-1">
-              <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${colors.badge}`}>
+              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${colors.badge} leading-tight`}>
                 {SUBJECT_LABELS[card.subject]}
               </span>
-              <span className="text-xs font-bold text-white bg-black/30 px-2 py-0.5 rounded-full">
+              <span className="text-[10px] font-bold text-white bg-black/30 px-1.5 py-0.5 rounded-full leading-tight">
                 {LEVEL_LABELS[card.level]}
               </span>
             </div>
-            <p className="text-white font-extrabold text-sm text-center leading-tight drop-shadow">
+            <p className="text-white font-extrabold text-xs text-center leading-tight drop-shadow line-clamp-1">
               {card.name}
             </p>
           </div>
 
-          {/* Illustration */}
-          <div className="bg-white/90 flex items-center justify-center h-16 mx-2 mt-2 rounded-xl border-2 border-gray-200">
-            <span className="text-4xl" role="img" aria-label={card.name}>
-              {card.emoji}
-            </span>
+          {/* Illustration — monstre SVG */}
+          <div className="bg-white/90 mx-2 mt-1.5 rounded-xl border-2 border-gray-200 overflow-hidden flex-shrink-0"
+            style={{ height: '38%' }}>
+            <CardMonster cardId={card.id} className="w-full h-full" />
           </div>
 
-          {/* Corps de la carte */}
-          <div className="bg-amber-50 mx-0 px-2 pt-2 pb-1 flex-1">
+          {/* Corps */}
+          <div className="bg-amber-50 px-2 pt-1 pb-1 flex flex-col flex-1 min-h-0">
             {/* Rareté & HP */}
-            <div className="flex justify-between items-center mb-1">
-              <span className="text-xs">{DIFFICULTY_STARS[card.difficulty]}</span>
-              <span className="text-xs font-bold text-gray-700">PV {card.currentHp ?? card.hp}/{card.hp}</span>
+            <div className="flex justify-between items-center mb-0.5">
+              <span className="text-[10px] leading-none">{DIFFICULTY_STARS[card.difficulty]}</span>
+              <span className="text-[10px] font-bold text-gray-700 leading-none">
+                PV {card.currentHp ?? card.hp}/{card.hp}
+              </span>
             </div>
 
             {/* Barre HP */}
-            <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
+            <div className="w-full bg-gray-200 rounded-full h-1.5 mb-1">
               <div
-                className={`${hpBarColor} h-2 rounded-full transition-all duration-300`}
+                className={`${hpBarColor} h-1.5 rounded-full transition-all duration-300`}
                 style={{ width: `${hpPercent}%` }}
               />
             </div>
 
             {/* Description */}
-            <p className="text-xs text-gray-700 leading-tight mb-2 line-clamp-2">
+            <p className="text-[10px] text-gray-700 leading-tight mb-1 line-clamp-2 flex-shrink-0">
               {card.description}
             </p>
 
             {/* Attaques */}
-            {(showAttacks ? card.attacks : card.attacks.slice(0, 1)).map((attack, i) => (
-              <div key={i} className="flex justify-between items-center bg-white/70 rounded-lg px-2 py-1 mb-1">
-                <span className="text-xs font-semibold text-gray-800 truncate">{attack.name}</span>
-                <span className="text-xs font-bold text-red-600 ml-1">{attack.damage}</span>
-              </div>
-            ))}
+            <div className="flex flex-col gap-0.5 overflow-hidden">
+              {(showAttacks ? card.attacks : card.attacks.slice(0, 1)).map((attack, i) => (
+                <div key={i} className="flex justify-between items-center bg-white/70 rounded-lg px-1.5 py-0.5">
+                  <span className="text-[10px] font-semibold text-gray-800 truncate">{attack.name}</span>
+                  <span className="text-[10px] font-bold text-red-600 ml-1 flex-shrink-0">{attack.damage}</span>
+                </div>
+              ))}
+            </div>
           </div>
 
-          {/* Pied de carte */}
-          <div className={`bg-gradient-to-b ${colors.bg} text-center py-1`}>
-            <span className="text-white text-[10px] font-medium opacity-80">
-              Clique pour retourner
-            </span>
+          {/* Pied */}
+          <div className={`bg-gradient-to-b ${colors.bg} text-center py-0.5`}>
+            <span className="text-white text-[9px] font-medium opacity-80">Appuie pour voir</span>
           </div>
         </div>
 
-        {/* ── FACE ARRIÈRE (question) ── */}
+        {/* ── FACE ARRIÈRE (questions) ── */}
         <div
-          className={`absolute inset-0 rounded-2xl border-4 ${colors.border} shadow-xl overflow-hidden bg-white`}
+          className={`absolute inset-0 rounded-2xl border-4 ${colors.border} shadow-xl overflow-hidden bg-white flex flex-col`}
           style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
         >
-          <div className={`bg-gradient-to-b ${colors.bg} p-2 text-center`}>
-            <p className="text-white font-extrabold text-xs drop-shadow">{card.name}</p>
+          <div className={`bg-gradient-to-b ${colors.bg} px-2 py-1.5 text-center flex-shrink-0`}>
+            <p className="text-white font-extrabold text-xs drop-shadow line-clamp-1">{card.name}</p>
           </div>
 
-          <div className="p-3 flex flex-col gap-2 h-[calc(100%-40px)] overflow-auto">
+          <div className="p-2 flex flex-col gap-1.5 flex-1 overflow-auto">
             {card.attacks.map((attack, i) => (
               <div key={i} className="bg-gray-50 rounded-xl border border-gray-200 p-2">
-                <p className="text-xs font-bold text-gray-800 mb-1">
+                <p className="text-[10px] font-bold text-gray-800 mb-1">
                   ⚡ {attack.name} ({attack.damage} dégâts)
                 </p>
-                <p className="text-xs text-gray-700 mb-2">{attack.question}</p>
+                <p className="text-[10px] text-gray-700 mb-1.5">{attack.question}</p>
                 <div className="grid grid-cols-2 gap-1">
                   {attack.answers.map((ans, j) => (
                     <span
                       key={j}
-                      className="text-[10px] bg-white border border-gray-300 rounded-lg px-1 py-0.5 text-center text-gray-700"
+                      className="text-[9px] bg-white border border-gray-300 rounded-lg px-1 py-0.5 text-center text-gray-700"
                     >
                       {String.fromCharCode(65 + j)}. {ans}
                     </span>
