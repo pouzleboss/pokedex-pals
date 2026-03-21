@@ -4,6 +4,7 @@ import { cards } from '../data/cards';
 import { EducationalCard as CardType, SUBJECT_COLORS } from '../types/game';
 import { CardMonster } from '../components/CardMonster';
 import { useProgress } from '../hooks/useProgress';
+import { useProfile } from '../hooks/useProfile';
 import { useSound } from '../hooks/useSound';
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -30,9 +31,10 @@ interface Floater {
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
-function randomEnemy(excludeId: string, hpMult: number): BattleCard {
-  const pool = cards.filter((c) => c.id !== excludeId);
-  const base = pool[Math.floor(Math.random() * pool.length)];
+function randomEnemy(excludeId: string, hpMult: number, pool: CardType[]): BattleCard {
+  const filtered = pool.filter((c) => c.id !== excludeId);
+  const fallback = filtered.length > 0 ? filtered : pool;
+  const base = fallback[Math.floor(Math.random() * fallback.length)];
   const scaledHp = Math.round(base.hp * hpMult);
   return { ...base, hp: scaledHp, currentHp: scaledHp };
 }
@@ -126,7 +128,9 @@ function SelectCard({ card, onSelect }: { card: CardType; onSelect: () => void }
 export default function Battle() {
   const navigate = useNavigate();
   const { recordBattle, pendingBadges, clearPendingBadges } = useProgress();
+  const { currentProfile } = useProfile();
   const { playSuccess, playError, playVictory, playDefeat, playBadge } = useSound();
+  const levelCards = cards.filter((c) => c.level === (currentProfile?.level ?? 1));
   const floaterIdRef = useRef(0);
 
   useEffect(() => {
@@ -159,7 +163,7 @@ export default function Battle() {
   const selectCard = useCallback((card: CardType) => {
     const cfg = DIFFICULTY_CONFIG[difficulty];
     setPlayerCard({ ...card, currentHp: card.hp });
-    setEnemyCard(randomEnemy(card.id, cfg.hpMult));
+    setEnemyCard(randomEnemy(card.id, cfg.hpMult, levelCards));
     setAttackIndex(0);
     setFeedback(null);
     setChosenIndex(null);
@@ -277,7 +281,7 @@ export default function Battle() {
           </div>
         </header>
         <div className="p-3 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-          {cards.map((card) => (
+          {levelCards.map((card) => (
             <SelectCard key={card.id} card={card} onSelect={() => selectCard(card)} />
           ))}
         </div>

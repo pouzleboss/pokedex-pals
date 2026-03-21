@@ -5,6 +5,7 @@ import { EducationalCard as CardType, SUBJECT_COLORS } from '../types/game';
 import { CardMonster } from '../components/CardMonster';
 import { Confetti } from '../components/Confetti';
 import { useProgress } from '../hooks/useProgress';
+import { useProfile } from '../hooks/useProfile';
 import { useSound } from '../hooks/useSound';
 
 const TOTAL_QUESTIONS = 10;
@@ -15,8 +16,8 @@ interface Question {
   attackIndex: number;
 }
 
-function generateQuestions(): Question[] {
-  const shuffled = [...cards].sort(() => Math.random() - 0.5);
+function generateQuestions(pool: CardType[]): Question[] {
+  const shuffled = [...pool].sort(() => Math.random() - 0.5);
   return shuffled.slice(0, TOTAL_QUESTIONS).map((card) => ({
     card,
     attackIndex: Math.floor(Math.random() * card.attacks.length),
@@ -28,7 +29,9 @@ type Phase = 'intro' | 'playing' | 'result';
 export default function Quiz() {
   const navigate = useNavigate();
   const { recordQuizScore, markDailyDone, stats, pendingBadges, clearPendingBadges } = useProgress();
+  const { currentProfile } = useProfile();
   const { playSuccess, playError, playVictory, playDefeat, playBadge } = useSound();
+  const levelCards = cards.filter((c) => c.level === (currentProfile?.level ?? 1));
 
   const [phase, setPhase] = useState<Phase>('intro');
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -54,7 +57,7 @@ export default function Quiz() {
 
   // Démarrer la partie
   const startQuiz = () => {
-    setQuestions(generateQuestions());
+    setQuestions(generateQuestions(levelCards));
     setCurrentIndex(0);
     setScore(0);
     setCorrectCount(0);

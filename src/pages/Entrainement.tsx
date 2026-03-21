@@ -5,6 +5,7 @@ import { Subject, SUBJECT_LABELS, SUBJECT_COLORS } from '../types/game';
 import { CardMonster } from '../components/CardMonster';
 import { Confetti } from '../components/Confetti';
 import { useProgress } from '../hooks/useProgress';
+import { useProfile } from '../hooks/useProfile';
 import { useSound } from '../hooks/useSound';
 
 type Phase = 'select' | 'playing' | 'result';
@@ -33,10 +34,10 @@ const SUBJECT_OPTIONS: { value: Subject | 'all'; label: string; emoji: string }[
   { value: 'géographie',  label: 'Géographie',           emoji: '🗺️' },
 ];
 
-function generateQuestions(subject: Subject | 'all', count: number): Question[] {
+function generateQuestions(subject: Subject | 'all', count: number, levelCards: typeof cards): Question[] {
   const pool = subject === 'all'
-    ? cards
-    : cards.filter((c) => c.subject === subject);
+    ? levelCards
+    : levelCards.filter((c) => c.subject === subject);
 
   if (pool.length === 0) return [];
 
@@ -61,7 +62,9 @@ function generateQuestions(subject: Subject | 'all', count: number): Question[] 
 export default function Entrainement() {
   const navigate = useNavigate();
   const { markCorrect, pendingBadges, clearPendingBadges } = useProgress();
+  const { currentProfile } = useProfile();
   const { playSuccess, playError, playVictory, playBadge } = useSound();
+  const levelCards = cards.filter((c) => c.level === (currentProfile?.level ?? 1));
 
   const [phase, setPhase] = useState<Phase>('select');
   const [subject, setSubject] = useState<Subject | 'all'>('all');
@@ -80,7 +83,7 @@ export default function Entrainement() {
   });
 
   const startSession = () => {
-    const qs = generateQuestions(subject, 8);
+    const qs = generateQuestions(subject, 8, levelCards);
     setQuestions(qs);
     setCurrentIndex(0);
     setChosen(null);

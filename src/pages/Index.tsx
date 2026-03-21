@@ -5,7 +5,7 @@ import { CardMonster } from '../components/CardMonster';
 import { PlayerSetup } from '../components/PlayerSetup';
 import { Confetti } from '../components/Confetti';
 import { cards } from '../data/cards';
-import { Subject, SUBJECT_COLORS, EducationalCard as CardType } from '../types/game';
+import { Subject, SUBJECT_COLORS, EducationalCard as CardType, LEVEL_LABELS } from '../types/game';
 import { useProgress } from '../hooks/useProgress';
 import { useProfile, ProfileEntry } from '../hooks/useProfile';
 import { useSound } from '../hooks/useSound';
@@ -82,9 +82,12 @@ function ProfileSwitcherModal({
                   <div className="w-10 h-10 rounded-full overflow-hidden bg-white border border-gray-200 flex-shrink-0 flex items-center justify-center">
                     <CardMonster cardId={p.avatarCardId} className="w-9 h-9" />
                   </div>
-                  <span className={`font-extrabold text-sm ${isActive ? 'text-purple-700' : 'text-gray-700'}`}>
-                    {p.name}
-                  </span>
+                  <div className="min-w-0">
+                    <span className={`font-extrabold text-sm block ${isActive ? 'text-purple-700' : 'text-gray-700'}`}>
+                      {p.name}
+                    </span>
+                    <span className="text-[10px] text-gray-400">{LEVEL_LABELS[p.level ?? 1]}</span>
+                  </div>
                   {isActive && (
                     <span className="text-[9px] font-bold bg-purple-500 text-white px-1.5 py-0.5 rounded-full ml-auto">
                       Actif
@@ -282,6 +285,9 @@ function MainContent({
     setXpToast(5);
   };
 
+  // Cartes filtrées selon le niveau de l'élève
+  const levelCards = cards.filter(c => c.level === profile.level);
+
   const selectedCard = selectedCardId ? cards.find(c => c.id === selectedCardId) ?? null : null;
 
   return (
@@ -349,6 +355,9 @@ function MainContent({
               <span className="bg-yellow-400 text-yellow-900 font-extrabold text-[10px] px-2 py-0.5 rounded-full flex-shrink-0">
                 Niv.{level}
               </span>
+              <span className="bg-white/20 text-white font-extrabold text-[10px] px-2 py-0.5 rounded-full flex-shrink-0">
+                {LEVEL_LABELS[profile.level ?? 1]}
+              </span>
               {streak >= 2 && (
                 <span className="bg-orange-500 text-white font-extrabold text-[10px] px-2 py-0.5 rounded-full flex-shrink-0">
                   🔥{streak}
@@ -394,11 +403,11 @@ function MainContent({
         {/* Stats bar */}
         <div className="flex items-center gap-3 bg-white/70 rounded-xl px-3 py-1.5 text-xs text-gray-600 shadow-sm">
           <div className="flex items-center gap-1.5 flex-1 min-w-0">
-            <span className="whitespace-nowrap font-semibold">🃏 {ownedCards.length}/{cards.length}</span>
+            <span className="whitespace-nowrap font-semibold">🃏 {ownedCards.filter(id => levelCards.find(c => c.id === id)).length}/{levelCards.length}</span>
             <div className="flex-1 bg-gray-200 rounded-full h-2">
               <div
                 className="bg-purple-400 h-2 rounded-full transition-all duration-500"
-                style={{ width: `${(ownedCards.length / cards.length) * 100}%` }}
+                style={{ width: `${(ownedCards.filter(id => levelCards.find(c => c.id === id)).length / levelCards.length) * 100}%` }}
               />
             </div>
           </div>
@@ -490,10 +499,10 @@ function MainContent({
         <div>
           <div className="flex items-center justify-between mb-2">
             <h2 className="text-sm font-extrabold text-gray-700">🃏 Ma Collection</h2>
-            <span className="text-xs text-gray-400">{ownedCards.length}/{cards.length} cartes</span>
+            <span className="text-xs text-gray-400">{ownedCards.filter(id => levelCards.find(c => c.id === id)).length}/{levelCards.length} cartes — {LEVEL_LABELS[profile.level ?? 1]}</span>
           </div>
 
-          {ownedCards.length === 0 && (
+          {ownedCards.filter(id => levelCards.find(c => c.id === id)).length === 0 && (
             <div className="bg-gradient-to-r from-indigo-50 to-purple-50 border-2 border-indigo-200 rounded-2xl px-4 py-4 mb-3 text-center slide-up">
               <div className="text-3xl mb-2">🃏</div>
               <p className="font-extrabold text-sm text-indigo-700">Ta collection est vide !</p>
@@ -510,7 +519,8 @@ function MainContent({
           )}
 
           {COLLECTION_SUBJECTS.map(subject => {
-            const subCards = cards.filter(c => c.subject === subject.value);
+            const subCards = levelCards.filter(c => c.subject === subject.value);
+            if (subCards.length === 0) return null;
             const ownedInSubject = subCards.filter(c => ownedCards.includes(c.id));
             const lockedInSubject = subCards.filter(c => !ownedCards.includes(c.id));
             const isComplete = lockedInSubject.length === 0;

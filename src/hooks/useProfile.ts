@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { SchoolLevel } from '../types/game';
 
 const PROFILES_KEY = 'pokedex-pals-profiles-v1';
 const CURRENT_KEY  = 'pokedex-pals-current-profile-v1';
@@ -7,7 +8,11 @@ export interface ProfileEntry {
   id: string;
   name: string;
   avatarCardId: string;
+  level: SchoolLevel; // CP=0, CE1=1, CE2=2, CM1=3, CM2=4
 }
+
+// Alias rétrocompat utilisé par PlayerSetup
+export type PlayerProfile = Omit<ProfileEntry, 'id'>;
 
 function generateId(): string {
   return Date.now().toString(36) + Math.random().toString(36).slice(2);
@@ -16,13 +21,17 @@ function generateId(): string {
 function loadProfiles(): ProfileEntry[] {
   try {
     const existing = localStorage.getItem(PROFILES_KEY);
-    if (existing) return JSON.parse(existing);
+    if (existing) {
+      // Assurer rétrocompat : ajouter level si absent
+      const parsed: ProfileEntry[] = JSON.parse(existing);
+      return parsed.map(p => ({ level: 1 as SchoolLevel, ...p }));
+    }
 
     // Migration depuis l'ancienne structure mono-profil
     const old = localStorage.getItem('pokedex-pals-profile-v1');
     if (old) {
-      const p = JSON.parse(old) as { name: string; avatarCardId: string };
-      const migrated: ProfileEntry[] = [{ id: 'default', name: p.name, avatarCardId: p.avatarCardId }];
+      const p = JSON.parse(old) as { name: string; avatarCardId: string; level?: SchoolLevel };
+      const migrated: ProfileEntry[] = [{ id: 'default', name: p.name, avatarCardId: p.avatarCardId, level: p.level ?? 1 }];
       localStorage.setItem(PROFILES_KEY, JSON.stringify(migrated));
       return migrated;
     }
