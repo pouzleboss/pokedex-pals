@@ -1,4 +1,4 @@
-export type Subject = 'maths' | 'sciences' | 'histoire' | 'langues';
+export type Subject = 'maths' | 'sciences' | 'histoire' | 'langues' | 'géographie';
 export type Difficulty = 'commun' | 'rare' | 'legendaire';
 
 // CE1=1, CE2=2, CM1=3, CM2=4
@@ -56,6 +56,12 @@ export const SUBJECT_COLORS: Record<Subject, { bg: string; border: string; text:
     text: 'text-pink-900',
     badge: 'bg-pink-100 text-pink-800',
   },
+  géographie: {
+    bg: 'from-teal-400 to-teal-600',
+    border: 'border-teal-700',
+    text: 'text-teal-900',
+    badge: 'bg-teal-100 text-teal-800',
+  },
 };
 
 export const SUBJECT_LABELS: Record<Subject, string> = {
@@ -63,6 +69,7 @@ export const SUBJECT_LABELS: Record<Subject, string> = {
   sciences: 'Sciences',
   histoire: 'Histoire',
   langues: 'Langues',
+  géographie: 'Géographie',
 };
 
 export const DIFFICULTY_STARS: Record<Difficulty, string> = {

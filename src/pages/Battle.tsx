@@ -10,7 +10,15 @@ interface BattleCard extends CardType {
   currentHp: number;
 }
 
-type Phase = 'select' | 'battle' | 'result';
+type Phase = 'difficulty' | 'select' | 'battle' | 'result';
+
+type Difficulty = 'facile' | 'normal' | 'legendaire';
+
+const DIFFICULTY_CONFIG: Record<Difficulty, { label: string; emoji: string; desc: string; hpMult: number; dmgMult: number; color: string }> = {
+  facile:     { label: 'Facile',      emoji: '🌱', desc: 'Ennemis avec moins de PV',         hpMult: 0.6, dmgMult: 0.8, color: 'bg-green-500' },
+  normal:     { label: 'Normal',      emoji: '⚔️',  desc: 'L\'équilibre parfait',             hpMult: 1.0, dmgMult: 1.0, color: 'bg-blue-500' },
+  legendaire: { label: 'Légendaire',  emoji: '🔥', desc: 'Ennemis redoutables, max de dégâts', hpMult: 1.5, dmgMult: 1.4, color: 'bg-red-600' },
+};
 type AnswerFeedback = null | 'correct' | 'wrong';
 
 interface Floater {
@@ -21,10 +29,11 @@ interface Floater {
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
-function randomEnemy(excludeId: string): BattleCard {
+function randomEnemy(excludeId: string, hpMult: number): BattleCard {
   const pool = cards.filter((c) => c.id !== excludeId);
   const base = pool[Math.floor(Math.random() * pool.length)];
-  return { ...base, currentHp: base.hp };
+  const scaledHp = Math.round(base.hp * hpMult);
+  return { ...base, hp: scaledHp, currentHp: scaledHp };
 }
 
 // ── Damage floater ────────────────────────────────────────────────────────────
@@ -118,7 +127,8 @@ export default function Battle() {
   const { recordBattle } = useProgress();
   const floaterIdRef = useRef(0);
 
-  const [phase, setPhase] = useState<Phase>('select');
+  const [phase, setPhase] = useState<Phase>('difficulty');
+  const [difficulty, setDifficulty] = useState<Difficulty>('normal');
   const [playerCard, setPlayerCard] = useState<BattleCard | null>(null);
   const [enemyCard, setEnemyCard] = useState<BattleCard | null>(null);
   const [attackIndex, setAttackIndex] = useState(0);
@@ -138,8 +148,9 @@ export default function Battle() {
   }, []);
 
   const selectCard = useCallback((card: CardType) => {
+    const cfg = DIFFICULTY_CONFIG[difficulty];
     setPlayerCard({ ...card, currentHp: card.hp });
-    setEnemyCard(randomEnemy(card.id));
+    setEnemyCard(randomEnemy(card.id, cfg.hpMult));
     setAttackIndex(0);
     setFeedback(null);
     setChosenIndex(null);
@@ -148,7 +159,7 @@ export default function Battle() {
     setFloaters([]);
     setResultRecorded(false);
     setPhase('battle');
-  }, []);
+  }, [difficulty]);
 
   const handleAnswer = useCallback(
     (chosen: number) => {
@@ -157,8 +168,9 @@ export default function Battle() {
       const attack = playerCard.attacks[attackIndex % playerCard.attacks.length];
       const correct = chosen === attack.correctIndex;
       const newStreak = correct ? streak + 1 : 0;
-      const multiplier = correct && streak >= 2 ? 1.5 : 1;
-      const damage = Math.round(attack.damage * multiplier);
+      const streakMult = correct && streak >= 2 ? 1.5 : 1;
+      const diffMult = DIFFICULTY_CONFIG[difficulty].dmgMult;
+      const damage = Math.round(attack.damage * streakMult * diffMult);
 
       setChosenIndex(chosen);
       setFeedback(correct ? 'correct' : 'wrong');
@@ -200,8 +212,47 @@ export default function Battle() {
         }, 1200);
       }
     },
-    [playerCard, enemyCard, attackIndex, feedback, streak, addFloater],
+    [playerCard, enemyCard, attackIndex, feedback, streak, difficulty, addFloater],
   );
+
+  // ── DIFFICULTY PHASE ──────────────────────────────────────────────────────
+  if (phase === 'difficulty') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 to-purple-900 flex flex-col items-center justify-center p-6 text-center page-fade">
+        <div className="text-6xl mb-3 pop-in">⚔️</div>
+        <h1 className="text-3xl font-extrabold text-white mb-1 slide-up">Choisir la difficulté</h1>
+        <p className="text-purple-300 text-sm mb-8 slide-up">Plus c'est dur, plus c'est gloire !</p>
+
+        <div className="w-full max-w-sm space-y-3 mb-8">
+          {(Object.entries(DIFFICULTY_CONFIG) as [Difficulty, typeof DIFFICULTY_CONFIG[Difficulty]][]).map(([key, cfg]) => (
+            <button
+              key={key}
+              onClick={() => { setDifficulty(key); setPhase('select'); }}
+              className={`w-full flex items-center gap-4 rounded-2xl px-5 py-4 border-2 transition-all active:scale-95 ${
+                difficulty === key
+                  ? 'border-yellow-400 bg-white/20 shadow-lg'
+                  : 'border-white/20 bg-white/10'
+              }`}
+            >
+              <span className="text-3xl flex-shrink-0">{cfg.emoji}</span>
+              <div className="flex-1 text-left">
+                <p className="text-white font-extrabold text-base">{cfg.label}</p>
+                <p className="text-purple-300 text-xs">{cfg.desc}</p>
+              </div>
+              <div className={`w-3 h-3 rounded-full flex-shrink-0 ${cfg.color}`} />
+            </button>
+          ))}
+        </div>
+
+        <button
+          onClick={() => navigate('/')}
+          className="text-purple-300 text-sm underline"
+        >
+          ← Retour à la collection
+        </button>
+      </div>
+    );
+  }
 
   // ── SELECT PHASE ─────────────────────────────────────────────────────────
   if (phase === 'select') {
@@ -263,7 +314,7 @@ export default function Battle() {
 
         <div className="flex gap-3">
           <button
-            onClick={() => setPhase('select')}
+            onClick={() => setPhase('difficulty')}
             className="bg-yellow-400 text-yellow-900 font-extrabold px-6 py-3 rounded-full text-base shadow-lg active:scale-95 transition-transform"
           >
             ⚔️ Rejouer
@@ -299,7 +350,9 @@ export default function Battle() {
           ✕ Quitter
         </button>
         <span className="text-white font-extrabold text-sm tracking-widest">⚔️ BATAILLE</span>
-        <span className="text-white/50 text-xs">Tour {attackIndex + 1}</span>
+        <span className={`text-white text-xs font-bold px-2 py-0.5 rounded-full ${DIFFICULTY_CONFIG[difficulty].color}`}>
+          {DIFFICULTY_CONFIG[difficulty].emoji} Tour {attackIndex + 1}
+        </span>
       </div>
 
       {/* Enemy */}

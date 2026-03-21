@@ -1,0 +1,17 @@
+{
+  "name": "Pokedex-Pals",
+  "short_name": "PokedexPals",
+  "description": "Le jeu de cartes éducatif pour les élèves du primaire !",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1e1b4b",
+  "theme_color": "#7c3aed",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "48x48",
+      "type": "image/x-icon"
+    }
+  ]
+}

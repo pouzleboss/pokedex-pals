@@ -486,6 +486,106 @@ function Grammix() {
   );
 }
 
+// ── GÉOGRAPHIE ───────────────────────────────────────────────────────────────
+function Septimos() {
+  // geo-01 · Continents · teal body, 7 bras colorés (un par continent)
+  const continentColors = ['#22c55e','#f59e0b','#3b82f6','#ef4444','#a855f7','#ec4899','#64748b'];
+  const angles = [270, 321, 12, 63, 114, 165, 216];
+  return face(
+    '#134e4a',
+    <>
+      {angles.map((deg, i) => {
+        const r = (deg * Math.PI) / 180;
+        return (
+          <line key={i}
+            x1={50 + Math.cos(r) * 27} y1={62 + Math.sin(r) * 22}
+            x2={50 + Math.cos(r) * 40} y2={62 + Math.sin(r) * 34}
+            stroke={continentColors[i]} strokeWidth="4" strokeLinecap="round"
+          />
+        );
+      })}
+      <ellipse cx="50" cy="62" rx="27" ry="22" fill="#2dd4bf" stroke="#0f766e" strokeWidth="2.5" />
+      <ellipse cx="50" cy="62" rx="27" ry="9" fill="none" stroke="#0f766e" strokeWidth="1" opacity="0.5" />
+      <line x1="50" y1="40" x2="50" y2="84" stroke="#0f766e" strokeWidth="1" opacity="0.5" />
+      <text x="50" y="68" textAnchor="middle" fontSize="10" fontWeight="bold" fill="#134e4a">×7</text>
+    </>,
+    <text x="50" y="22" textAnchor="middle" fontSize="12">🌍</text>,
+  );
+}
+
+function Oceanus() {
+  // geo-02 · Océans · blue wave monster, 5 crêtes
+  return face(
+    '#1e3a8a',
+    <>
+      <ellipse cx="50" cy="62" rx="27" ry="22" fill="#38bdf8" stroke="#0284c7" strokeWidth="2.5" />
+      {/* vagues sur le corps */}
+      <path d="M 28 58 Q 34 53 40 58 Q 46 63 52 58 Q 58 53 64 58 Q 70 63 74 60"
+        fill="none" stroke="#0369a1" strokeWidth="2" strokeLinecap="round" />
+      {/* 5 petits poissons/bulles */}
+      {[30,40,50,60,70].map((cx, i) => (
+        <circle key={i} cx={cx} cy={45} r="3" fill="#bae6fd" stroke="#0284c7" strokeWidth="1" />
+      ))}
+    </>,
+    <text x="50" y="22" textAnchor="middle" fontSize="12">🌊</text>,
+  );
+}
+
+function Hexagon() {
+  // geo-03 · L'Hexagone (France) · corps hexagonal tricolore
+  return face(
+    '#1e3a8a',
+    <>
+      <polygon points="50,40 68,51 68,73 50,84 32,73 32,51"
+        fill="#60a5fa" stroke="#1d4ed8" strokeWidth="2.5" />
+      {/* bandes tricolores */}
+      <clipPath id="hexClip">
+        <polygon points="50,40 68,51 68,73 50,84 32,73 32,51" />
+      </clipPath>
+      <rect x="32" y="40" width="12" height="44" fill="#2563eb" clipPath="url(#hexClip)" opacity="0.7" />
+      <rect x="56" y="40" width="12" height="44" fill="#dc2626" clipPath="url(#hexClip)" opacity="0.7" />
+      {/* béret rouge */}
+      <ellipse cx="50" cy="38" rx="13" ry="5" fill="#dc2626" stroke="#991b1b" strokeWidth="1.5" />
+      <circle cx="50" cy="34" r="3" fill="#991b1b" />
+    </>,
+  );
+}
+
+function Flagrix() {
+  // geo-04 · Capitales · body vert globe, drapeau en antenne
+  return face(
+    '#14532d',
+    <>
+      <ellipse cx="50" cy="62" rx="27" ry="22" fill="#34d399" stroke="#059669" strokeWidth="2.5" />
+      {/* lignes de globe */}
+      <ellipse cx="50" cy="62" rx="27" ry="9" fill="none" stroke="#059669" strokeWidth="1" opacity="0.7" />
+      <line x1="50" y1="40" x2="50" y2="84" stroke="#059669" strokeWidth="1" opacity="0.7" />
+      {/* drapeau antenne */}
+      <line x1="50" y1="38" x2="50" y2="25" stroke="#6b7280" strokeWidth="2" strokeLinecap="round" />
+      <rect x="50" y="25" width="16" height="10" rx="1" fill="#ef4444" />
+      <rect x="50" y="25" width="6" height="10" fill="#2563eb" />
+    </>,
+  );
+}
+
+function Fluvix() {
+  // geo-05 · Fleuves · serpent-fleuve légendaire
+  return face(
+    '#1e3a8a',
+    <>
+      {/* ondulation bleue derrière le corps */}
+      <path d="M 15 72 Q 28 60 41 70 Q 54 80 67 68 Q 78 58 86 65"
+        fill="none" stroke="#38bdf8" strokeWidth="8" strokeLinecap="round" opacity="0.6" />
+      <ellipse cx="50" cy="60" rx="26" ry="20" fill="#7dd3fc" stroke="#0284c7" strokeWidth="2.5" />
+      {/* gouttes d'eau */}
+      <path d="M 22 50 Q 20 45 22 40 Q 24 45 22 50 Z" fill="#38bdf8" />
+      <path d="M 78 50 Q 76 45 78 40 Q 80 45 78 50 Z" fill="#38bdf8" />
+    </>,
+    <text x="50" y="22" textAnchor="middle" fontSize="11">👑</text>,
+    'smart',
+  );
+}
+
 function DefaultMonster() {
   return face('#374151', <ellipse cx="50" cy="62" rx="27" ry="22" fill="#9ca3af" stroke="#374151" strokeWidth="2.5" />);
 }
@@ -512,6 +612,11 @@ const MONSTER_MAP: Record<string, () => React.ReactElement> = {
   'lang-03': Verbix,
   'lang-04': Numbrix,
   'lang-05': Grammix,
+  'geo-01': Septimos,
+  'geo-02': Oceanus,
+  'geo-03': Hexagon,
+  'geo-04': Flagrix,
+  'geo-05': Fluvix,
 };
 
 export function CardMonster({ cardId, className = 'w-full h-full' }: Props) {
