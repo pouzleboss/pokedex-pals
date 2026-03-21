@@ -39,6 +39,7 @@ export default function Quiz() {
   const [showConfetti, setShowConfetti] = useState(false);
   const [xpGained, setXpGained] = useState(0);
   const [correctCount, setCorrectCount] = useState(0);
+  const [answerLog, setAnswerLog] = useState<{ chosen: number; correct: boolean }[]>([]);
 
   const current = questions[currentIndex];
   const attack = current ? current.card.attacks[current.attackIndex] : null;
@@ -60,6 +61,7 @@ export default function Quiz() {
     setChosen(null);
     setTimeLeft(SECONDS_PER_Q);
     setXpGained(0);
+    setAnswerLog([]);
     setPhase('playing');
   };
 
@@ -79,6 +81,7 @@ export default function Quiz() {
     if (phase !== 'playing' || chosen !== null) return;
     if (timeLeft <= 0) {
       setChosen(-1);
+      setAnswerLog((prev) => [...prev, { chosen: -1, correct: false }]);
       playError();
       setTimeout(nextQuestion, 1200);
       return;
@@ -92,6 +95,7 @@ export default function Quiz() {
     if (chosen !== null || !attack) return;
     setChosen(answerIndex);
     const correct = answerIndex === attack.correctIndex;
+    setAnswerLog((prev) => [...prev, { chosen: answerIndex, correct }]);
     if (correct) {
       setScore((s) => s + 1);
       setCorrectCount((c) => c + 1);
@@ -218,6 +222,30 @@ export default function Quiz() {
           />
         </div>
         <p className="text-indigo-300 text-xs mb-6">{correctCount} bonne{correctCount > 1 ? 's' : ''} réponse{correctCount > 1 ? 's' : ''} sur {TOTAL_QUESTIONS}</p>
+
+        {/* Récap question par question */}
+        {answerLog.length > 0 && (
+          <div className="w-full max-w-xs bg-white/10 rounded-2xl p-3 mb-4 border border-white/20 text-left">
+            <p className="text-indigo-200 text-[10px] font-bold uppercase tracking-wider mb-2 text-center">Détail des réponses</p>
+            <div className="space-y-1.5">
+              {questions.map((q, i) => {
+                const log = answerLog[i];
+                const attack = q.card.attacks[q.attackIndex];
+                return (
+                  <div key={i} className={`rounded-lg px-2.5 py-1.5 flex items-start gap-2 ${log?.correct ? 'bg-green-500/20' : 'bg-red-500/20'}`}>
+                    <span className="text-xs flex-shrink-0">{log?.correct ? '✅' : '❌'}</span>
+                    <div className="min-w-0">
+                      <p className="text-white text-[10px] leading-tight line-clamp-1">{attack.question}</p>
+                      {!log?.correct && (
+                        <p className="text-green-300 text-[9px]">→ {attack.answers[attack.correctIndex]}</p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         <div className="flex gap-3">
           <button

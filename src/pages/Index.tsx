@@ -86,6 +86,28 @@ function XpToast({ xp, onDone }: { xp: number; onDone: () => void }) {
   );
 }
 
+// ── Popup passage de niveau ────────────────────────────────────────────────────
+function LevelUpPopup({ level, levelName, onDone }: { level: number; levelName: string; onDone: () => void }) {
+  useEffect(() => {
+    const t = setTimeout(onDone, 3500);
+    return () => clearTimeout(t);
+  }, [onDone]);
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
+      <div className="bg-gradient-to-br from-yellow-400 to-orange-400 rounded-3xl shadow-2xl px-8 py-6 flex flex-col items-center gap-2 pop-in pointer-events-auto max-w-[85vw]">
+        <span className="text-5xl">🚀</span>
+        <p className="text-yellow-900 font-extrabold text-xl text-center">Niveau {level} atteint !</p>
+        <p className="text-yellow-800 font-bold text-sm text-center">{levelName}</p>
+        <div className="flex gap-1 mt-1">
+          {Array.from({ length: Math.min(level, 5) }).map((_, i) => (
+            <span key={i} className="text-yellow-900 text-lg">⭐</span>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const Index = () => {
   const navigate = useNavigate();
   const {
@@ -104,6 +126,7 @@ const Index = () => {
   const [showBadges, setShowBadges] = useState(false);
   const [currentBadge, setCurrentBadge] = useState<Achievement | null>(null);
   const [xpToast, setXpToast] = useState<number | null>(null);
+  const [levelUpData, setLevelUpData] = useState<{ level: number; name: string } | null>(null);
 
   const prevLevelRef = useRef(level);
   const badgeQueueRef = useRef<Achievement[]>([]);
@@ -132,13 +155,14 @@ const Index = () => {
     setTimeout(showNextBadge, 300);
   }
 
-  // Détecter un passage de niveau
+  // Détecter un passage de niveau → popup
   useEffect(() => {
     if (level > prevLevelRef.current) {
       prevLevelRef.current = level;
       playLevelUp();
+      setLevelUpData({ level, name: levelName });
     }
-  }, [level]);
+  }, [level, levelName]);
 
   const handleCorrectAnswer = (cardId: string, attackIdx: number) => {
     markCorrect(cardId, attackIdx);
@@ -176,6 +200,15 @@ const Index = () => {
       {/* Badge notification */}
       {currentBadge && <BadgeNotification badge={currentBadge} onDone={onBadgeDone} />}
 
+      {/* Level-up popup */}
+      {levelUpData && (
+        <LevelUpPopup
+          level={levelUpData.level}
+          levelName={levelUpData.name}
+          onDone={() => setLevelUpData(null)}
+        />
+      )}
+
       {/* XP toast */}
       {xpToast !== null && (
         <XpToast xp={xpToast} onDone={() => setXpToast(null)} />
@@ -212,6 +245,12 @@ const Index = () => {
           </div>
 
           <div className="flex items-center gap-1.5 ml-2">
+            <button
+              onClick={() => navigate('/entrainement')}
+              className="bg-green-500 active:bg-green-400 text-white font-extrabold px-2.5 py-1.5 rounded-full text-xs shadow-md active:scale-95 transition-transform whitespace-nowrap"
+            >
+              🌱 Entraîne
+            </button>
             <button
               onClick={() => navigate('/quiz')}
               className="bg-indigo-500 active:bg-indigo-400 text-white font-extrabold px-2.5 py-1.5 rounded-full text-xs shadow-md active:scale-95 transition-transform whitespace-nowrap"
@@ -406,13 +445,18 @@ const Index = () => {
           </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-            {filtered.map((card) => (
-              <EducationalCard
+            {filtered.map((card, idx) => (
+              <div
                 key={card.id}
-                card={card}
-                stars={getStars(card.id, card.attacks.length)}
-                onCorrectAnswer={(attackIdx) => handleCorrectAnswer(card.id, attackIdx)}
-              />
+                className="card-enter"
+                style={{ animationDelay: `${Math.min(idx * 40, 600)}ms` }}
+              >
+                <EducationalCard
+                  card={card}
+                  stars={getStars(card.id, card.attacks.length)}
+                  onCorrectAnswer={(attackIdx) => handleCorrectAnswer(card.id, attackIdx)}
+                />
+              </div>
             ))}
           </div>
         )}
@@ -420,7 +464,7 @@ const Index = () => {
 
       <footer className="text-center py-3 text-gray-400 text-[10px]">
         Pokedex-Pals — Jeu éducatif pour les élèves du primaire 🎓
-        <span className="ml-2 bg-gray-100 text-gray-400 px-1.5 py-0.5 rounded font-mono">v1.4.0</span>
+        <span className="ml-2 bg-gray-100 text-gray-400 px-1.5 py-0.5 rounded font-mono">v1.5.0</span>
       </footer>
     </div>
   );
