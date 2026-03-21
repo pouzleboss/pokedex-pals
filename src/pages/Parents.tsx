@@ -66,6 +66,12 @@ export default function Parents() {
   const unlockedAchs = ACHIEVEMENTS.filter((a) => unlockedBadges.includes(a.id));
   const lockedAchs = ACHIEVEMENTS.filter((a) => !unlockedBadges.includes(a.id));
 
+  // Analyse des points forts et axes de progrès
+  const sorted = [...subjectProgress].sort((a, b) => b.pct - a.pct);
+  const best = sorted[0];
+  const weakest = sorted[sorted.length - 1];
+  const hasPlayed = stats.totalAnswered > 0;
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex flex-col page-fade">
       {/* Header */}
@@ -85,6 +91,49 @@ export default function Parents() {
       </header>
 
       <main className="flex-1 px-4 py-4 max-w-2xl mx-auto w-full space-y-4">
+
+        {/* Analyse personnalisée */}
+        {hasPlayed && (
+          <section className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl border border-green-200 p-4">
+            <h2 className="text-sm font-extrabold text-green-800 mb-3">📊 Analyse personnalisée</h2>
+            <div className="space-y-2">
+              {best.pct > 0 && (
+                <div className="flex items-start gap-2.5">
+                  <span className="text-lg flex-shrink-0">🌟</span>
+                  <p className="text-xs text-green-800">
+                    <span className="font-bold">Point fort :</span> {profile?.name} réussit particulièrement bien en{' '}
+                    <span className="font-extrabold">{best.label}</span> ({best.pct}% de réussite).
+                    Encouragez cette curiosité !
+                  </p>
+                </div>
+              )}
+              {weakest.pct < 60 && weakest.key !== best.key && (
+                <div className="flex items-start gap-2.5">
+                  <span className="text-lg flex-shrink-0">💪</span>
+                  <p className="text-xs text-green-800">
+                    <span className="font-bold">À renforcer :</span>{' '}
+                    <span className="font-extrabold">{weakest.label}</span> ({weakest.pct}%) — faites
+                    explorer cette matière ensemble pour booster la confiance.
+                  </p>
+                </div>
+              )}
+              {streak >= 2 && (
+                <div className="flex items-start gap-2.5">
+                  <span className="text-lg flex-shrink-0">🔥</span>
+                  <p className="text-xs text-green-800">
+                    <span className="font-bold">Super régularité !</span> {profile?.name} joue depuis{' '}
+                    <span className="font-extrabold">{streak} jours de suite</span>. La constance est la clé du succès !
+                  </p>
+                </div>
+              )}
+              {!hasPlayed && (
+                <p className="text-xs text-green-700 italic">
+                  Aucune donnée encore — invitez votre enfant à retourner quelques cartes !
+                </p>
+              )}
+            </div>
+          </section>
+        )}
 
         {/* Bannière de confiance */}
         <div className="bg-blue-50 border border-blue-200 rounded-2xl px-4 py-3 flex gap-3 items-start">
