@@ -13,8 +13,15 @@ const AVATAR_OPTIONS = [
   'math-01', 'sci-01', 'hist-03', 'lang-02', 'geo-03',
 ];
 
+const HOW_TO_PLAY = [
+  { emoji: '🃏', title: 'Retourne les cartes', desc: 'Appuie sur une carte pour la retourner et répondre à une question !' },
+  { emoji: '🎯', title: 'Quiz Chrono', desc: '10 questions, 15 secondes chacune. Réponds vite pour scorer un maximum !' },
+  { emoji: '⚔️', title: 'Bataille !', desc: 'Choisis ta carte et affronte un ennemi. Tes bonnes réponses font des dégâts !' },
+  { emoji: '⭐', title: 'Gagne des étoiles', desc: 'Réponds à toutes les questions d\'une carte pour la maîtriser et débloquer des badges !' },
+];
+
 export function PlayerSetup({ onSave }: Props) {
-  const [step, setStep] = useState<'name' | 'avatar'>('name');
+  const [step, setStep] = useState<'name' | 'avatar' | 'tutorial'>('name');
   const [name, setName] = useState('');
   const [avatarCardId, setAvatarCardId] = useState(AVATAR_OPTIONS[0]);
 
@@ -111,10 +118,47 @@ export function PlayerSetup({ onSave }: Props) {
               ← Retour
             </button>
             <button
+              onClick={() => setStep('tutorial')}
+              className="flex-[2] bg-yellow-400 text-yellow-900 font-extrabold py-2.5 rounded-full text-sm active:scale-95 transition-transform"
+            >
+              Suivant →
+            </button>
+          </div>
+        </div>
+      )}
+      {step === 'tutorial' && (
+        <div className="w-full max-w-sm bg-white/10 backdrop-blur rounded-3xl p-5 border border-white/20 pop-in">
+          <h2 className="text-white font-extrabold text-xl mb-1 text-center">
+            Comment jouer, {name} ?
+          </h2>
+          <p className="text-purple-300 text-xs text-center mb-4">
+            C'est super simple — regarde !
+          </p>
+
+          <div className="space-y-3 mb-5">
+            {HOW_TO_PLAY.map((item, i) => (
+              <div key={i} className="flex items-start gap-3 bg-white/10 rounded-2xl px-3 py-2.5 border border-white/10">
+                <span className="text-2xl flex-shrink-0 mt-0.5">{item.emoji}</span>
+                <div>
+                  <p className="text-white font-extrabold text-sm leading-tight">{item.title}</p>
+                  <p className="text-purple-300 text-xs mt-0.5 leading-snug">{item.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex gap-2">
+            <button
+              onClick={() => setStep('avatar')}
+              className="flex-1 bg-white/10 text-white font-bold py-2.5 rounded-full text-sm border border-white/20 active:scale-95 transition-transform"
+            >
+              ← Retour
+            </button>
+            <button
               onClick={handleSave}
               className="flex-[2] bg-yellow-400 text-yellow-900 font-extrabold py-2.5 rounded-full text-sm active:scale-95 transition-transform"
             >
-              C'est parti ! 🎮
+              🎮 Jouer maintenant !
             </button>
           </div>
         </div>

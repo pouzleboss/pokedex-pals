@@ -133,6 +133,48 @@ export const ACHIEVEMENTS: Achievement[] = [
     emoji: '🚀',
     color: 'bg-purple-100',
   },
+  {
+    id: 'twenty-five-answered',
+    name: 'Curieux',
+    description: 'Réponds à 25 questions',
+    emoji: '🧠',
+    color: 'bg-cyan-100',
+  },
+  {
+    id: 'hundred-answered',
+    name: 'Encyclopédie',
+    description: 'Réponds à 100 questions',
+    emoji: '📖',
+    color: 'bg-indigo-100',
+  },
+  {
+    id: 'quiz-50',
+    name: 'Bon Élève',
+    description: 'Obtiens 50/100 ou plus au Quiz',
+    emoji: '📝',
+    color: 'bg-blue-100',
+  },
+  {
+    id: 'battle-5',
+    name: 'Combattant',
+    description: 'Joue 5 batailles',
+    emoji: '🛡️',
+    color: 'bg-red-100',
+  },
+  {
+    id: 'streak-2',
+    name: 'Assidu',
+    description: 'Joue 2 jours de suite',
+    emoji: '🌱',
+    color: 'bg-green-100',
+  },
+  {
+    id: 'first-mastered',
+    name: 'Première Maîtrise',
+    description: 'Maîtrise ta première carte',
+    emoji: '✨',
+    color: 'bg-yellow-100',
+  },
 ];
 
 export function checkAchievement(id: string, stats: AchievementStats): boolean {
@@ -152,7 +194,13 @@ export function checkAchievement(id: string, stats: AchievementStats): boolean {
     case 'quiz-champion':   return stats.bestQuizScore >= 100;
     case 'streak-3':        return stats.streak >= 3;
     case 'streak-7':        return stats.streak >= 7;
-    case 'level-5':         return stats.level >= 5;
-    default:                return false;
+    case 'level-5':             return stats.level >= 5;
+    case 'twenty-five-answered': return stats.totalAnswered >= 25;
+    case 'hundred-answered':    return stats.totalAnswered >= 100;
+    case 'quiz-50':             return stats.bestQuizScore >= 50;
+    case 'battle-5':            return stats.battleTotal >= 5;
+    case 'streak-2':            return stats.streak >= 2;
+    case 'first-mastered':      return stats.masteredCount >= 1;
+    default:                    return false;
   }
 }

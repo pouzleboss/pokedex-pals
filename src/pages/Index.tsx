@@ -13,6 +13,25 @@ import { Achievement } from '../data/achievements';
 type SubjectFilter = Subject | 'all';
 type LevelFilter = SchoolLevel | 'all';
 
+function getTimeGreeting(name: string): { emoji: string; text: string; tip: string } {
+  const h = new Date().getHours();
+  if (h >= 5 && h < 12) return {
+    emoji: '☀️',
+    text: `Bonjour ${name} !`,
+    tip: 'Un bon début de journée commence par réviser une carte 🃏',
+  };
+  if (h >= 12 && h < 18) return {
+    emoji: '🌤️',
+    text: `Bon après-midi ${name} !`,
+    tip: "C'est le bon moment pour un Quiz Chrono ⏱️",
+  };
+  return {
+    emoji: '🌙',
+    text: `Bonsoir ${name} !`,
+    tip: 'Une petite bataille avant de dormir ? ⚔️',
+  };
+}
+
 const SUBJECT_OPTIONS: { value: SubjectFilter; label: string; emoji: string }[] = [
   { value: 'all',          label: 'Toutes',                       emoji: '🌟' },
   { value: 'maths',        label: SUBJECT_LABELS.maths,           emoji: '➕' },
@@ -313,6 +332,20 @@ const Index = () => {
             ⚙️
           </button>
         </div>
+
+        {/* Salutation personnalisée */}
+        {(() => {
+          const g = getTimeGreeting(profile.name);
+          return (
+            <div className="flex items-center gap-3 bg-white/80 rounded-xl px-3 py-2.5 shadow-sm">
+              <span className="text-2xl flex-shrink-0">{g.emoji}</span>
+              <div className="min-w-0">
+                <p className="font-extrabold text-sm text-gray-800 leading-tight">{g.text}</p>
+                <p className="text-xs text-gray-500 leading-tight">{g.tip}</p>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Daily challenge banner */}
         <button
