@@ -1,7 +1,9 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { EducationalCard } from '../components/EducationalCard';
 import { cards } from '../data/cards';
 import { Subject, SUBJECT_LABELS, LEVEL_LABELS, SchoolLevel } from '../types/game';
+import { useProgress } from '../hooks/useProgress';
 
 type SubjectFilter = Subject | 'all';
 type LevelFilter = SchoolLevel | 'all';
@@ -15,7 +17,7 @@ const SUBJECT_OPTIONS: { value: SubjectFilter; label: string; emoji: string }[] 
 ];
 
 const LEVEL_OPTIONS: { value: LevelFilter; label: string }[] = [
-  { value: 'all', label: 'Tous niveaux' },
+  { value: 'all', label: 'Tous' },
   { value: 1, label: LEVEL_LABELS[1] },
   { value: 2, label: LEVEL_LABELS[2] },
   { value: 3, label: LEVEL_LABELS[3] },
@@ -23,62 +25,78 @@ const LEVEL_OPTIONS: { value: LevelFilter; label: string }[] = [
 ];
 
 const Index = () => {
+  const navigate = useNavigate();
+  const { markCorrect, getStars, stats, resetProgress } = useProgress();
   const [subjectFilter, setSubjectFilter] = useState<SubjectFilter>('all');
   const [levelFilter, setLevelFilter] = useState<LevelFilter>('all');
+  const [search, setSearch] = useState('');
+  const [showReset, setShowReset] = useState(false);
 
   const filtered = cards.filter((c) => {
     const matchSubject = subjectFilter === 'all' || c.subject === subjectFilter;
     const matchLevel = levelFilter === 'all' || c.level === levelFilter;
-    return matchSubject && matchLevel;
+    const q = search.toLowerCase();
+    const matchSearch =
+      q === '' ||
+      c.name.toLowerCase().includes(q) ||
+      c.description.toLowerCase().includes(q) ||
+      SUBJECT_LABELS[c.subject].toLowerCase().includes(q);
+    return matchSubject && matchLevel && matchSearch;
   });
 
+  const handleReset = () => {
+    resetProgress();
+    setShowReset(false);
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-100 via-blue-50 to-pink-100">
-      {/* Header */}
-      <header className="bg-gradient-to-r from-purple-600 to-blue-600 shadow-lg py-6 px-4 text-center">
-        <h1 className="text-4xl font-extrabold text-white drop-shadow-md tracking-wide">
-          🃏 Pokedex-Pals
-        </h1>
-        <p className="text-purple-100 mt-1 text-lg">
-          Apprends en jouant avec tes cartes éducatives !
-        </p>
-        <div className="mt-4">
-          <button className="bg-yellow-400 hover:bg-yellow-300 text-yellow-900 font-extrabold px-8 py-3 rounded-full text-lg shadow-md transition-all hover:scale-105 active:scale-95">
-            ⚔️ Commencer une Bataille
+    <div className="min-h-screen bg-gradient-to-br from-purple-100 via-blue-50 to-pink-100 flex flex-col">
+
+      {/* ── Sticky header ── */}
+      <header className="sticky top-0 z-20 bg-gradient-to-r from-purple-600 to-blue-600 shadow-lg">
+        <div className="flex items-center justify-between px-4 py-3">
+          <div>
+            <h1 className="text-xl font-extrabold text-white leading-tight tracking-wide">
+              🃏 Pokedex-Pals
+            </h1>
+            <p className="text-purple-200 text-[11px] leading-tight hidden sm:block">
+              Apprends en jouant avec tes cartes !
+            </p>
+          </div>
+          <button
+            onClick={() => navigate('/battle')}
+            className="bg-yellow-400 active:bg-yellow-300 text-yellow-900 font-extrabold px-4 py-2 rounded-full text-sm shadow-md active:scale-95 transition-transform whitespace-nowrap"
+          >
+            ⚔️ Bataille
           </button>
         </div>
-      </header>
 
-      {/* Filters */}
-      <section className="max-w-5xl mx-auto px-4 py-6">
-        <div className="bg-white/80 backdrop-blur rounded-2xl shadow-md p-4 flex flex-col sm:flex-row gap-4 items-center justify-between">
-          {/* Subject filter */}
-          <div className="flex flex-wrap gap-2 justify-center">
+        {/* Filter strips */}
+        <div className="px-3 pb-2 space-y-1.5">
+          <div className="flex gap-2 overflow-x-auto pb-0.5 scrollbar-none">
             {SUBJECT_OPTIONS.map((opt) => (
               <button
                 key={opt.value}
                 onClick={() => setSubjectFilter(opt.value)}
-                className={`px-3 py-1.5 rounded-full text-sm font-semibold transition-all border-2 ${
+                className={`flex-shrink-0 px-3 py-1 rounded-full text-xs font-semibold transition-all border-2 ${
                   subjectFilter === opt.value
-                    ? 'bg-purple-600 text-white border-purple-700 shadow'
-                    : 'bg-white text-gray-700 border-gray-200 hover:border-purple-400'
+                    ? 'bg-white text-purple-700 border-white shadow'
+                    : 'bg-purple-700/40 text-white border-transparent'
                 }`}
               >
                 {opt.emoji} {opt.label}
               </button>
             ))}
           </div>
-
-          {/* Level filter */}
-          <div className="flex gap-2 flex-wrap justify-center">
+          <div className="flex gap-2 overflow-x-auto pb-0.5 scrollbar-none">
             {LEVEL_OPTIONS.map((opt) => (
               <button
                 key={opt.value}
                 onClick={() => setLevelFilter(opt.value)}
-                className={`px-3 py-1.5 rounded-full text-sm font-semibold transition-all border-2 ${
+                className={`flex-shrink-0 px-3 py-1 rounded-full text-xs font-semibold transition-all border-2 ${
                   levelFilter === opt.value
-                    ? 'bg-blue-600 text-white border-blue-700 shadow'
-                    : 'bg-white text-gray-600 border-gray-200 hover:border-blue-400'
+                    ? 'bg-white text-blue-700 border-white shadow'
+                    : 'bg-blue-700/40 text-white border-transparent'
                 }`}
               >
                 {opt.label}
@@ -86,31 +104,110 @@ const Index = () => {
             ))}
           </div>
         </div>
+      </header>
+
+      <main className="flex-1 px-3 py-3 flex flex-col gap-2">
+
+        {/* Search bar */}
+        <div className="relative">
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none">
+            🔍
+          </span>
+          <input
+            type="search"
+            placeholder="Chercher une carte…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full bg-white rounded-xl border-2 border-gray-200 pl-8 pr-3 py-2 text-sm focus:outline-none focus:border-purple-400 shadow-sm"
+          />
+          {search && (
+            <button
+              onClick={() => setSearch('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg leading-none"
+            >
+              ×
+            </button>
+          )}
+        </div>
 
         {/* Stats bar */}
-        <p className="text-center text-sm text-gray-500 mt-3">
-          {filtered.length} carte{filtered.length !== 1 ? 's' : ''} disponible{filtered.length !== 1 ? 's' : ''}
-        </p>
-      </section>
+        <div className="flex items-center gap-3 bg-white/70 rounded-xl px-3 py-1.5 text-xs text-gray-600 shadow-sm">
+          {/* Progress bar */}
+          <div className="flex items-center gap-1.5 flex-1 min-w-0">
+            <span className="whitespace-nowrap font-semibold">📚 {stats.masteredCount}/{cards.length}</span>
+            <div className="flex-1 bg-gray-200 rounded-full h-2">
+              <div
+                className="bg-yellow-400 h-2 rounded-full transition-all duration-500"
+                style={{ width: `${(stats.masteredCount / cards.length) * 100}%` }}
+              />
+            </div>
+          </div>
 
-      {/* Cards grid */}
-      <section className="max-w-5xl mx-auto px-4 pb-12">
+          {/* Battle wins */}
+          {stats.battleTotal > 0 && (
+            <span className="whitespace-nowrap font-semibold flex-shrink-0">
+              ⚔️ {stats.battleWins}/{stats.battleTotal}
+            </span>
+          )}
+
+          {/* Reset */}
+          <button
+            onClick={() => setShowReset(true)}
+            className="flex-shrink-0 text-gray-400 text-base leading-none"
+            title="Réinitialiser la progression"
+          >
+            ⚙️
+          </button>
+        </div>
+
+        {/* Reset confirmation */}
+        {showReset && (
+          <div className="bg-red-50 border-2 border-red-200 rounded-xl px-4 py-3 text-sm slide-up">
+            <p className="font-semibold text-red-700 mb-2">Effacer toute la progression ?</p>
+            <div className="flex gap-2">
+              <button
+                onClick={handleReset}
+                className="bg-red-500 text-white font-bold px-4 py-1.5 rounded-full text-xs active:scale-95"
+              >
+                Oui, tout effacer
+              </button>
+              <button
+                onClick={() => setShowReset(false)}
+                className="bg-gray-200 text-gray-700 font-bold px-4 py-1.5 rounded-full text-xs active:scale-95"
+              >
+                Annuler
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Card count */}
+        <p className="text-center text-xs text-gray-500">
+          {filtered.length} carte{filtered.length !== 1 ? 's' : ''}
+          {search && ` pour "${search}"`}
+        </p>
+
+        {/* Cards grid */}
         {filtered.length === 0 ? (
-          <div className="text-center py-16 text-gray-400">
-            <span className="text-5xl block mb-4">🔍</span>
-            <p className="text-lg">Aucune carte pour cette sélection.</p>
+          <div className="text-center py-20 text-gray-400">
+            <span className="text-5xl block mb-4">{search ? '🔍' : '🃏'}</span>
+            <p>{search ? `Aucune carte pour "${search}"` : 'Aucune carte pour cette sélection.'}</p>
           </div>
         ) : (
-          <div className="flex flex-wrap gap-6 justify-center">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
             {filtered.map((card) => (
-              <EducationalCard key={card.id} card={card} />
+              <EducationalCard
+                key={card.id}
+                card={card}
+                stars={getStars(card.id, card.attacks.length)}
+                onCorrectAnswer={(attackIdx) => markCorrect(card.id, attackIdx)}
+              />
             ))}
           </div>
         )}
-      </section>
+      </main>
 
-      {/* Footer */}
-      <footer className="text-center py-4 text-gray-400 text-xs">
+      <footer className="text-center py-3 text-gray-400 text-[10px]">
         Pokedex-Pals — Jeu éducatif pour les élèves du primaire 🎓
       </footer>
     </div>
