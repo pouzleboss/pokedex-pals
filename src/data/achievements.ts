@@ -1,4 +1,5 @@
 import { Subject } from '../types/game';
+import { cards } from './cards';
 
 export interface Achievement {
   id: string;
@@ -182,7 +183,7 @@ export function checkAchievement(id: string, stats: AchievementStats): boolean {
     case 'first-answer':    return stats.totalAnswered >= 1;
     case 'five-mastered':   return stats.masteredCount >= 5;
     case 'ten-mastered':    return stats.masteredCount >= 10;
-    case 'all-mastered':    return stats.masteredCount >= 25;
+    case 'all-mastered':    return stats.masteredCount >= cards.length;
     case 'all-maths':       return (stats.masteredBySubject['maths'] ?? 0) >= 5;
     case 'all-sciences':    return (stats.masteredBySubject['sciences'] ?? 0) >= 5;
     case 'all-histoire':    return (stats.masteredBySubject['histoire'] ?? 0) >= 5;

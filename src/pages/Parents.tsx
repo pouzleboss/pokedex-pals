@@ -173,7 +173,7 @@ export default function Parents() {
           <div className="grid grid-cols-3 gap-2 mt-4">
             <StatTile emoji="⭐" value={`${xp} XP`} label="Total gagné" />
             <StatTile emoji="🔥" value={streak > 0 ? `${streak} j.` : '—'} label="Streak" />
-            <StatTile emoji="📚" value={`${stats.masteredCount}/25`} label="Cartes maîtrisées" />
+            <StatTile emoji="📚" value={`${stats.masteredCount}/${cards.length}`} label="Cartes maîtrisées" />
           </div>
         </section>
 
