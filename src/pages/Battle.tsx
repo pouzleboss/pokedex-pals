@@ -1,9 +1,10 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { cards } from '../data/cards';
 import { EducationalCard as CardType, SUBJECT_COLORS } from '../types/game';
 import { CardMonster } from '../components/CardMonster';
 import { useProgress } from '../hooks/useProgress';
+import { useSound } from '../hooks/useSound';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 interface BattleCard extends CardType {
@@ -124,8 +125,16 @@ function SelectCard({ card, onSelect }: { card: CardType; onSelect: () => void }
 // ── Main Battle component ─────────────────────────────────────────────────────
 export default function Battle() {
   const navigate = useNavigate();
-  const { recordBattle } = useProgress();
+  const { recordBattle, pendingBadges, clearPendingBadges } = useProgress();
+  const { playSuccess, playError, playVictory, playDefeat, playBadge } = useSound();
   const floaterIdRef = useRef(0);
+
+  useEffect(() => {
+    if (pendingBadges.length > 0) {
+      playBadge();
+      clearPendingBadges();
+    }
+  }, [pendingBadges]);
 
   const [phase, setPhase] = useState<Phase>('difficulty');
   const [difficulty, setDifficulty] = useState<Difficulty>('normal');
@@ -177,6 +186,7 @@ export default function Battle() {
       setStreak(newStreak);
 
       if (correct) {
+        playSuccess();
         setEnemyHit(true);
         addFloater(`-${damage} 💥`, 'text-red-400', 'enemy');
         setTimeout(() => setEnemyHit(false), 600);
@@ -194,6 +204,7 @@ export default function Battle() {
           setChosenIndex(null);
         }, 1200);
       } else {
+        playError();
         setPlayerHit(true);
         addFloater(`-${attack.damage} 💔`, 'text-pink-400', 'player');
         setTimeout(() => setPlayerHit(false), 600);
@@ -277,22 +288,29 @@ export default function Battle() {
   // ── RESULT PHASE ─────────────────────────────────────────────────────────
   if (phase === 'result') {
     const won = winner === 'player';
+    const xpGained = won ? 30 : 10;
     // Record once
     if (!resultRecorded) {
       recordBattle(won);
       setResultRecorded(true);
+      if (won) playVictory(); else playDefeat();
     }
 
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 to-purple-900 flex flex-col items-center justify-center p-6 text-center">
-        <div className="text-7xl mb-3 pop-in">{won ? '🏆' : '💀'}</div>
+        <div className="text-7xl mb-3 pop-in" style={won ? { filter: 'drop-shadow(0 0 20px rgba(255,220,0,0.6))' } : {}}>
+          {won ? '🏆' : '💀'}
+        </div>
 
         <h2 className="text-3xl font-extrabold text-white mb-1 slide-up">
           {won ? 'VICTOIRE !' : 'DÉFAITE…'}
         </h2>
-        <p className="text-purple-300 mb-6 slide-up">
+        <p className="text-purple-300 mb-2 slide-up">
           {won ? `Tu as mis K.O. ${enemyCard?.name} !` : `${enemyCard?.name} t'a eu cette fois !`}
         </p>
+        <div className="bg-yellow-400/20 border border-yellow-400/50 rounded-2xl px-5 py-1.5 mb-4 pop-in">
+          <p className="text-yellow-300 font-extrabold text-sm">✨ +{xpGained} XP</p>
+        </div>
 
         {/* Winning monster */}
         {(won ? playerCard : enemyCard) && (

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { EducationalCard } from '../components/EducationalCard';
 import { PlayerSetup } from '../components/PlayerSetup';
@@ -7,41 +7,126 @@ import { cards } from '../data/cards';
 import { Subject, SUBJECT_LABELS, LEVEL_LABELS, SchoolLevel } from '../types/game';
 import { useProgress } from '../hooks/useProgress';
 import { useProfile } from '../hooks/useProfile';
+import { useSound } from '../hooks/useSound';
+import { Achievement } from '../data/achievements';
 
 type SubjectFilter = Subject | 'all';
 type LevelFilter = SchoolLevel | 'all';
 
 const SUBJECT_OPTIONS: { value: SubjectFilter; label: string; emoji: string }[] = [
-  { value: 'all', label: 'Toutes', emoji: '🌟' },
-  { value: 'maths', label: SUBJECT_LABELS.maths, emoji: '➕' },
-  { value: 'sciences', label: SUBJECT_LABELS.sciences, emoji: '🔬' },
-  { value: 'histoire', label: SUBJECT_LABELS.histoire, emoji: '🏛️' },
-  { value: 'langues', label: SUBJECT_LABELS.langues, emoji: '💬' },
-  { value: 'géographie', label: SUBJECT_LABELS['géographie'], emoji: '🗺️' },
+  { value: 'all',          label: 'Toutes',                       emoji: '🌟' },
+  { value: 'maths',        label: SUBJECT_LABELS.maths,           emoji: '➕' },
+  { value: 'sciences',     label: SUBJECT_LABELS.sciences,        emoji: '🔬' },
+  { value: 'histoire',     label: SUBJECT_LABELS.histoire,        emoji: '🏛️' },
+  { value: 'langues',      label: SUBJECT_LABELS.langues,         emoji: '💬' },
+  { value: 'géographie',   label: SUBJECT_LABELS['géographie'],   emoji: '🗺️' },
 ];
 
 const LEVEL_OPTIONS: { value: LevelFilter; label: string }[] = [
   { value: 'all', label: 'Tous' },
-  { value: 1, label: LEVEL_LABELS[1] },
-  { value: 2, label: LEVEL_LABELS[2] },
-  { value: 3, label: LEVEL_LABELS[3] },
-  { value: 4, label: LEVEL_LABELS[4] },
+  { value: 1,     label: LEVEL_LABELS[1] },
+  { value: 2,     label: LEVEL_LABELS[2] },
+  { value: 3,     label: LEVEL_LABELS[3] },
+  { value: 4,     label: LEVEL_LABELS[4] },
 ];
+
+// ── Badge notification popup ───────────────────────────────────────────────────
+function BadgeNotification({ badge, onDone }: { badge: Achievement; onDone: () => void }) {
+  useEffect(() => {
+    const t = setTimeout(onDone, 3200);
+    return () => clearTimeout(t);
+  }, [onDone]);
+
+  return (
+    <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 pop-in">
+      <div className="bg-white rounded-2xl shadow-2xl border-2 border-yellow-300 px-5 py-3 flex items-center gap-3 max-w-[90vw]">
+        <span className="text-3xl">{badge.emoji}</span>
+        <div>
+          <p className="text-xs text-yellow-600 font-bold uppercase tracking-wider">Badge débloqué !</p>
+          <p className="text-sm font-extrabold text-gray-800">{badge.name}</p>
+          <p className="text-[11px] text-gray-500">{badge.description}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── XP toast ──────────────────────────────────────────────────────────────────
+function XpToast({ xp, onDone }: { xp: number; onDone: () => void }) {
+  useEffect(() => {
+    const t = setTimeout(onDone, 1400);
+    return () => clearTimeout(t);
+  }, [onDone]);
+
+  return (
+    <div className="fixed top-20 right-4 z-50 pop-in pointer-events-none">
+      <div className="bg-yellow-400 text-yellow-900 font-extrabold text-sm px-3 py-1.5 rounded-full shadow-lg">
+        ✨ +{xp} XP
+      </div>
+    </div>
+  );
+}
 
 const Index = () => {
   const navigate = useNavigate();
-  const { markCorrect, getStars, stats, resetProgress, isDailyDone } = useProgress();
+  const {
+    markCorrect, getStars, stats, resetProgress, isDailyDone,
+    pendingBadges, clearPendingBadges,
+    xp, streak, level, levelName, levelProgress,
+  } = useProgress();
   const { profile, saveProfile } = useProfile();
+  const { playSuccess, playBadge, playLevelUp } = useSound();
+
   const [subjectFilter, setSubjectFilter] = useState<SubjectFilter>('all');
   const [levelFilter, setLevelFilter] = useState<LevelFilter>('all');
   const [search, setSearch] = useState('');
   const [showReset, setShowReset] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
+  const [showBadges, setShowBadges] = useState(false);
+  const [currentBadge, setCurrentBadge] = useState<Achievement | null>(null);
+  const [xpToast, setXpToast] = useState<number | null>(null);
+
+  const prevLevelRef = useRef(level);
+  const badgeQueueRef = useRef<Achievement[]>([]);
+  const showingBadgeRef = useRef(false);
+
+  // Afficher les badges en file d'attente
+  useEffect(() => {
+    if (pendingBadges.length > 0) {
+      badgeQueueRef.current = [...badgeQueueRef.current, ...pendingBadges];
+      clearPendingBadges();
+      showNextBadge();
+    }
+  }, [pendingBadges]);
+
+  function showNextBadge() {
+    if (showingBadgeRef.current || badgeQueueRef.current.length === 0) return;
+    showingBadgeRef.current = true;
+    const next = badgeQueueRef.current.shift()!;
+    setCurrentBadge(next);
+    playBadge();
+  }
+
+  function onBadgeDone() {
+    setCurrentBadge(null);
+    showingBadgeRef.current = false;
+    setTimeout(showNextBadge, 300);
+  }
+
+  // Détecter un passage de niveau
+  useEffect(() => {
+    if (level > prevLevelRef.current) {
+      prevLevelRef.current = level;
+      playLevelUp();
+    }
+  }, [level]);
 
   const handleCorrectAnswer = (cardId: string, attackIdx: number) => {
     markCorrect(cardId, attackIdx);
     setShowConfetti(true);
     setTimeout(() => setShowConfetti(false), 100);
+    playSuccess();
+    setXpToast(5);
   };
 
   if (!profile) {
@@ -69,27 +154,54 @@ const Index = () => {
     <div className="min-h-screen bg-gradient-to-br from-purple-100 via-blue-50 to-pink-100 flex flex-col">
       <Confetti active={showConfetti} duration={1800} />
 
+      {/* Badge notification */}
+      {currentBadge && <BadgeNotification badge={currentBadge} onDone={onBadgeDone} />}
+
+      {/* XP toast */}
+      {xpToast !== null && (
+        <XpToast xp={xpToast} onDone={() => setXpToast(null)} />
+      )}
+
       {/* ── Sticky header ── */}
       <header className="sticky top-0 z-20 bg-gradient-to-r from-purple-600 to-blue-600 shadow-lg">
-        <div className="flex items-center justify-between px-4 py-3">
-          <div>
-            <h1 className="text-xl font-extrabold text-white leading-tight tracking-wide">
-              🃏 {profile.name}
-            </h1>
-            <p className="text-purple-200 text-[11px] leading-tight">
-              Apprends en jouant !
-            </p>
+        <div className="flex items-center justify-between px-4 py-2.5">
+          <div className="flex-1 min-w-0">
+            {/* Nom + niveau */}
+            <div className="flex items-center gap-2">
+              <h1 className="text-base font-extrabold text-white leading-tight truncate">
+                🃏 {profile.name}
+              </h1>
+              <span className="bg-yellow-400 text-yellow-900 font-extrabold text-[10px] px-2 py-0.5 rounded-full flex-shrink-0">
+                Niv.{level}
+              </span>
+              {streak >= 2 && (
+                <span className="bg-orange-500 text-white font-extrabold text-[10px] px-2 py-0.5 rounded-full flex-shrink-0 flex items-center gap-0.5">
+                  🔥{streak}
+                </span>
+              )}
+            </div>
+            {/* Barre XP */}
+            <div className="flex items-center gap-1.5 mt-1">
+              <div className="flex-1 bg-white/20 rounded-full h-1.5">
+                <div
+                  className="bg-yellow-400 h-1.5 rounded-full transition-all duration-700"
+                  style={{ width: `${levelProgress * 100}%` }}
+                />
+              </div>
+              <span className="text-purple-200 text-[10px] flex-shrink-0">{levelName}</span>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
+
+          <div className="flex items-center gap-1.5 ml-2">
             <button
               onClick={() => navigate('/quiz')}
-              className="bg-indigo-500 active:bg-indigo-400 text-white font-extrabold px-3 py-2 rounded-full text-xs shadow-md active:scale-95 transition-transform whitespace-nowrap"
+              className="bg-indigo-500 active:bg-indigo-400 text-white font-extrabold px-2.5 py-1.5 rounded-full text-xs shadow-md active:scale-95 transition-transform whitespace-nowrap"
             >
               🎯 Quiz
             </button>
             <button
               onClick={() => navigate('/battle')}
-              className="bg-yellow-400 active:bg-yellow-300 text-yellow-900 font-extrabold px-3 py-2 rounded-full text-xs shadow-md active:scale-95 transition-transform whitespace-nowrap"
+              className="bg-yellow-400 active:bg-yellow-300 text-yellow-900 font-extrabold px-2.5 py-1.5 rounded-full text-xs shadow-md active:scale-95 transition-transform whitespace-nowrap"
             >
               ⚔️ Bataille
             </button>
@@ -175,6 +287,23 @@ const Index = () => {
             </span>
           )}
 
+          {/* Badges button */}
+          <button
+            onClick={() => setShowBadges((v) => !v)}
+            className="flex-shrink-0 font-semibold text-purple-600 border border-purple-200 rounded-full px-2 py-0.5 text-[10px] active:scale-95 transition-transform"
+          >
+            🏅 Badges
+          </button>
+
+          {/* Espace Parents */}
+          <button
+            onClick={() => navigate('/parents')}
+            className="flex-shrink-0 text-gray-400 text-base leading-none"
+            title="Espace parents"
+          >
+            👨‍👩‍👧
+          </button>
+
           {/* Reset */}
           <button
             onClick={() => setShowReset(true)}
@@ -200,11 +329,14 @@ const Index = () => {
               {isDailyDone ? 'Défi du jour accompli !' : 'Défi du jour — Quiz Chrono'}
             </p>
             <p className={`text-xs ${isDailyDone ? 'text-green-600' : 'text-indigo-100'}`}>
-              {isDailyDone ? 'Reviens demain pour un nouveau défi' : '10 questions · 15s par question'}
+              {isDailyDone ? 'Reviens demain pour un nouveau défi 🌅' : '10 questions · 15s · +25 XP bonus'}
             </p>
           </div>
           {!isDailyDone && <span className="text-white font-bold text-lg flex-shrink-0">→</span>}
         </button>
+
+        {/* Badges panel */}
+        {showBadges && <BadgesPanel unlockedBadges={[]} currentUnlocked={[]} />}
 
         {/* Reset confirmation */}
         {showReset && (
@@ -259,5 +391,37 @@ const Index = () => {
     </div>
   );
 };
+
+// ── Badges panel (mini vue) ────────────────────────────────────────────────────
+import { ACHIEVEMENTS } from '../data/achievements';
+import { useProgress as useProgressForBadges } from '../hooks/useProgress';
+
+function BadgesPanel({ unlockedBadges: _u, currentUnlocked: _c }: { unlockedBadges: string[]; currentUnlocked: string[] }) {
+  const { unlockedBadges } = useProgressForBadges();
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-3 py-3 slide-up">
+      <p className="text-xs font-extrabold text-gray-600 mb-2">
+        🏅 Badges — {unlockedBadges.length}/{ACHIEVEMENTS.length} débloqués
+      </p>
+      <div className="grid grid-cols-4 gap-2">
+        {ACHIEVEMENTS.map((ach) => {
+          const unlocked = unlockedBadges.includes(ach.id);
+          return (
+            <div
+              key={ach.id}
+              title={`${ach.name} — ${ach.description}`}
+              className={`flex flex-col items-center gap-0.5 rounded-xl py-2 px-1 border ${
+                unlocked ? `${ach.color} border-transparent` : 'bg-gray-50 border-gray-100 opacity-40'
+              }`}
+            >
+              <span className={`text-xl ${!unlocked && 'grayscale'}`}>{ach.emoji}</span>
+              <span className="text-[9px] font-bold text-gray-600 text-center leading-tight line-clamp-1">{ach.name}</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 export default Index;

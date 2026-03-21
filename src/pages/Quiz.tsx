@@ -5,6 +5,7 @@ import { EducationalCard as CardType, SUBJECT_COLORS } from '../types/game';
 import { CardMonster } from '../components/CardMonster';
 import { Confetti } from '../components/Confetti';
 import { useProgress } from '../hooks/useProgress';
+import { useSound } from '../hooks/useSound';
 
 const TOTAL_QUESTIONS = 10;
 const SECONDS_PER_Q = 15;
@@ -26,7 +27,8 @@ type Phase = 'intro' | 'playing' | 'result';
 
 export default function Quiz() {
   const navigate = useNavigate();
-  const { recordQuizScore, markDailyDone, stats } = useProgress();
+  const { recordQuizScore, markDailyDone, stats, pendingBadges, clearPendingBadges } = useProgress();
+  const { playSuccess, playError, playVictory, playDefeat, playBadge } = useSound();
 
   const [phase, setPhase] = useState<Phase>('intro');
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -35,17 +37,29 @@ export default function Quiz() {
   const [timeLeft, setTimeLeft] = useState(SECONDS_PER_Q);
   const [chosen, setChosen] = useState<number | null>(null);
   const [showConfetti, setShowConfetti] = useState(false);
+  const [xpGained, setXpGained] = useState(0);
+  const [correctCount, setCorrectCount] = useState(0);
 
   const current = questions[currentIndex];
   const attack = current ? current.card.attacks[current.attackIndex] : null;
+
+  // Badge notification in quiz
+  useEffect(() => {
+    if (pendingBadges.length > 0) {
+      playBadge();
+      clearPendingBadges();
+    }
+  }, [pendingBadges]);
 
   // Démarrer la partie
   const startQuiz = () => {
     setQuestions(generateQuestions());
     setCurrentIndex(0);
     setScore(0);
+    setCorrectCount(0);
     setChosen(null);
     setTimeLeft(SECONDS_PER_Q);
+    setXpGained(0);
     setPhase('playing');
   };
 
@@ -64,7 +78,8 @@ export default function Quiz() {
   useEffect(() => {
     if (phase !== 'playing' || chosen !== null) return;
     if (timeLeft <= 0) {
-      setChosen(-1); // timeout : aucune réponse
+      setChosen(-1);
+      playError();
       setTimeout(nextQuestion, 1200);
       return;
     }
@@ -77,7 +92,13 @@ export default function Quiz() {
     if (chosen !== null || !attack) return;
     setChosen(answerIndex);
     const correct = answerIndex === attack.correctIndex;
-    if (correct) setScore((s) => s + 1);
+    if (correct) {
+      setScore((s) => s + 1);
+      setCorrectCount((c) => c + 1);
+      playSuccess();
+    } else {
+      playError();
+    }
     setTimeout(nextQuestion, 1200);
   };
 
@@ -85,10 +106,17 @@ export default function Quiz() {
   useEffect(() => {
     if (phase !== 'result') return;
     const finalScore = Math.round((score / TOTAL_QUESTIONS) * 100);
-    recordQuizScore(finalScore);
+    const xpGain = correctCount * 8 + (finalScore >= 80 ? 20 : finalScore >= 50 ? 10 : 0);
+    setXpGained(xpGain);
+    recordQuizScore(finalScore, correctCount);
     markDailyDone();
-    if (finalScore >= 80) setShowConfetti(true);
-  }, [phase, score, recordQuizScore, markDailyDone]);
+    if (finalScore >= 80) {
+      setShowConfetti(true);
+      playVictory();
+    } else {
+      playDefeat();
+    }
+  }, [phase]);
 
   const scorePercent = Math.round((score / TOTAL_QUESTIONS) * 100);
   const isNewRecord = phase === 'result' && scorePercent > stats.bestQuizScore;
@@ -104,20 +132,21 @@ export default function Quiz() {
         </p>
 
         {stats.bestQuizScore > 0 && (
-          <div className="bg-yellow-400/20 border border-yellow-400 rounded-2xl px-4 py-2 mb-6 slide-up">
+          <div className="bg-yellow-400/20 border border-yellow-400 rounded-2xl px-4 py-2 mb-4 slide-up">
             <p className="text-yellow-300 text-sm font-bold">
               🏆 Meilleur score : {stats.bestQuizScore}/100
             </p>
           </div>
         )}
 
-        <div className="bg-white/10 rounded-2xl p-4 mb-8 max-w-xs text-left border border-white/20 slide-up">
+        <div className="bg-white/10 rounded-2xl p-4 mb-6 max-w-xs text-left border border-white/20 slide-up">
           <p className="text-white text-sm font-semibold mb-2">Comment jouer :</p>
-          <ul className="text-indigo-200 text-xs space-y-1">
+          <ul className="text-indigo-200 text-xs space-y-1.5">
             <li>⏱️ Réponds avant la fin du chrono</li>
-            <li>✅ +1 point par bonne réponse</li>
-            <li>❌ Mauvaise réponse ou temps écoulé = 0 point</li>
+            <li>✅ Bonne réponse = +1 point + XP</li>
+            <li>❌ Mauvaise réponse ou temps écoulé = 0</li>
             <li>🏆 Score ≥ 80/100 = champion !</li>
+            <li>🎯 Défi du jour = +25 XP bonus !</li>
           </ul>
         </div>
 
@@ -147,29 +176,48 @@ export default function Quiz() {
           ? "Pas mal, continue à t'entraîner !"
           : 'Continue, tu vas progresser !';
 
+    const barColor = scorePercent >= 80
+      ? 'from-yellow-400 to-green-400'
+      : scorePercent >= 50
+        ? 'from-blue-400 to-teal-400'
+        : 'from-gray-400 to-blue-400';
+
     return (
       <div className="min-h-screen bg-gradient-to-br from-indigo-900 to-purple-900 flex flex-col items-center justify-center p-6 text-center page-fade">
         <Confetti active={showConfetti} />
-        <div className="text-7xl mb-3 pop-in">{medal}</div>
-        <h2 className="text-3xl font-extrabold text-white mb-1 slide-up">
+
+        {/* Médaille animée */}
+        <div className="text-8xl mb-2 pop-in" style={{ filter: 'drop-shadow(0 0 20px rgba(255,220,0,0.6))' }}>
+          {medal}
+        </div>
+
+        <h2 className="text-4xl font-extrabold text-white mb-1 slide-up">
           {score}/{TOTAL_QUESTIONS}
         </h2>
-        <p className="text-2xl font-bold text-yellow-300 mb-1 slide-up">{scorePercent}/100</p>
-        <p className="text-indigo-300 mb-2 slide-up">{msg}</p>
+        <p className="text-3xl font-bold text-yellow-300 mb-1 slide-up">{scorePercent}/100</p>
+        <p className="text-indigo-200 mb-3 slide-up text-sm">{msg}</p>
+
+        {/* XP gagné */}
+        {xpGained > 0 && (
+          <div className="bg-yellow-400/20 border border-yellow-400/50 rounded-2xl px-5 py-2 mb-3 pop-in">
+            <p className="text-yellow-300 font-extrabold text-sm">✨ +{xpGained} XP gagnés !</p>
+          </div>
+        )}
 
         {isNewRecord && (
-          <div className="bg-yellow-400/20 border border-yellow-400 rounded-2xl px-4 py-2 mb-4 pop-in">
-            <p className="text-yellow-300 font-extrabold text-sm">🎉 Nouveau record !</p>
+          <div className="bg-green-400/20 border border-green-400 rounded-2xl px-4 py-2 mb-4 pop-in">
+            <p className="text-green-300 font-extrabold text-sm">🎉 Nouveau record !</p>
           </div>
         )}
 
         {/* Barre de score */}
-        <div className="w-full max-w-xs bg-white/20 rounded-full h-4 mb-6 slide-up">
+        <div className="w-full max-w-xs bg-white/20 rounded-full h-4 mb-2 slide-up overflow-hidden">
           <div
-            className="h-4 rounded-full bg-gradient-to-r from-yellow-400 to-green-400 transition-all duration-1000"
+            className={`h-4 rounded-full bg-gradient-to-r ${barColor} transition-all duration-1000`}
             style={{ width: `${scorePercent}%` }}
           />
         </div>
+        <p className="text-indigo-300 text-xs mb-6">{correctCount} bonne{correctCount > 1 ? 's' : ''} réponse{correctCount > 1 ? 's' : ''} sur {TOTAL_QUESTIONS}</p>
 
         <div className="flex gap-3">
           <button
@@ -217,7 +265,7 @@ export default function Quiz() {
       {/* Chrono */}
       <div className="px-4 mb-3 flex-shrink-0">
         <div className="flex items-center gap-2">
-          <span className={`text-lg font-extrabold ${timeLeft <= 5 ? 'text-red-400' : 'text-white'}`}>
+          <span className={`text-lg font-extrabold ${timeLeft <= 5 ? 'text-red-400 animate-pulse' : 'text-white'}`}>
             {timeLeft <= 5 ? '⚠️' : '⏱️'} {timeLeft}s
           </span>
           <div className="flex-1 bg-white/20 rounded-full h-3">
@@ -235,7 +283,7 @@ export default function Quiz() {
           <div className={`bg-gradient-to-b ${colors.bg} px-2 py-1 text-center`}>
             <p className="text-white font-extrabold text-[10px] line-clamp-1">{current.card.name}</p>
           </div>
-          <div className={`monster-float bg-white flex items-center justify-center py-3`}>
+          <div className="monster-float bg-white flex items-center justify-center py-3">
             <CardMonster cardId={current.card.id} className="w-20 h-20" />
           </div>
         </div>
@@ -278,7 +326,7 @@ export default function Quiz() {
               {chosen === -1
                 ? '⏰ Temps écoulé !'
                 : chosen === attack.correctIndex
-                  ? '✅ Bravo ! +1 point'
+                  ? '✅ Bravo ! +1 point +8 XP'
                   : `❌ Réponse : ${String.fromCharCode(65 + attack.correctIndex)}`}
             </p>
           )}
