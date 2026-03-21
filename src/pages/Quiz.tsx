@@ -144,7 +144,7 @@ export default function Quiz() {
       scorePercent >= 80
         ? 'Incroyable, tu es un génie !'
         : scorePercent >= 50
-          ? 'Pas mal, continue à t'entraîner !'
+          ? "Pas mal, continue à t'entraîner !"
           : 'Continue, tu vas progresser !';
 
     return (
