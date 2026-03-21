@@ -247,6 +247,11 @@ export function useProgress() {
     (c) => (data.cardAnswers[c.id] ?? []).length >= c.attacks.length,
   ).length;
 
+  // Cartes débloquées : au moins 1 attaque répondue correctement
+  const ownedCards = cards
+    .filter((c) => (data.cardAnswers[c.id] ?? []).length > 0)
+    .map((c) => c.id);
+
   const levelInfo = getLevelInfo(data.xp);
 
   return {
@@ -259,6 +264,7 @@ export function useProgress() {
     isDailyDone,
     pendingBadges,
     clearPendingBadges,
+    ownedCards,
     xp: data.xp,
     streak: data.streak,
     level: levelInfo.level,

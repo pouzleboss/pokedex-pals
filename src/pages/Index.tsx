@@ -1,17 +1,15 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { EducationalCard } from '../components/EducationalCard';
+import { CardMonster } from '../components/CardMonster';
 import { PlayerSetup } from '../components/PlayerSetup';
 import { Confetti } from '../components/Confetti';
 import { cards } from '../data/cards';
-import { Subject, SUBJECT_LABELS, LEVEL_LABELS, SchoolLevel } from '../types/game';
+import { Subject, SUBJECT_LABELS, SUBJECT_COLORS, EducationalCard as CardType } from '../types/game';
 import { useProgress } from '../hooks/useProgress';
 import { useProfile } from '../hooks/useProfile';
 import { useSound } from '../hooks/useSound';
-import { Achievement } from '../data/achievements';
-
-type SubjectFilter = Subject | 'all';
-type LevelFilter = SchoolLevel | 'all';
+import { Achievement, ACHIEVEMENTS } from '../data/achievements';
 
 function getTimeGreeting(name: string): { emoji: string; text: string; tip: string } {
   const h = new Date().getHours();
@@ -32,22 +30,61 @@ function getTimeGreeting(name: string): { emoji: string; text: string; tip: stri
   };
 }
 
-const SUBJECT_OPTIONS: { value: SubjectFilter; label: string; emoji: string }[] = [
-  { value: 'all',          label: 'Toutes',                       emoji: '🌟' },
-  { value: 'maths',        label: SUBJECT_LABELS.maths,           emoji: '➕' },
-  { value: 'sciences',     label: SUBJECT_LABELS.sciences,        emoji: '🔬' },
-  { value: 'histoire',     label: SUBJECT_LABELS.histoire,        emoji: '🏛️' },
-  { value: 'langues',      label: SUBJECT_LABELS.langues,         emoji: '💬' },
-  { value: 'géographie',   label: SUBJECT_LABELS['géographie'],   emoji: '🗺️' },
+const COLLECTION_SUBJECTS: { value: Subject; label: string; emoji: string; progressBg: string }[] = [
+  { value: 'maths',      label: 'Maths',       emoji: '➕', progressBg: 'bg-blue-400'   },
+  { value: 'sciences',   label: 'Sciences',    emoji: '🔬', progressBg: 'bg-green-400'  },
+  { value: 'histoire',   label: 'Histoire',    emoji: '🏛️', progressBg: 'bg-orange-400' },
+  { value: 'langues',    label: 'Langues',     emoji: '💬', progressBg: 'bg-pink-400'   },
+  { value: 'géographie', label: 'Géographie',  emoji: '🗺️', progressBg: 'bg-teal-400'   },
 ];
 
-const LEVEL_OPTIONS: { value: LevelFilter; label: string }[] = [
-  { value: 'all', label: 'Tous' },
-  { value: 1,     label: LEVEL_LABELS[1] },
-  { value: 2,     label: LEVEL_LABELS[2] },
-  { value: 3,     label: LEVEL_LABELS[3] },
-  { value: 4,     label: LEVEL_LABELS[4] },
-];
+// ── Mini card (possédée) ───────────────────────────────────────────────────────
+function MiniCard({ card, stars, onTap }: { card: CardType; stars: 0 | 1 | 2 | 3; onTap: () => void }) {
+  const colors = SUBJECT_COLORS[card.subject];
+  const isMastered = stars === 3;
+  return (
+    <button
+      onClick={onTap}
+      className={`flex-shrink-0 w-[88px] rounded-xl border-2 ${colors.border} overflow-hidden active:scale-95 transition-transform shadow-md relative`}
+    >
+      {isMastered && (
+        <div className="absolute inset-0 card-mastered-shimmer z-10 rounded-xl pointer-events-none" />
+      )}
+      <div className={`bg-gradient-to-b ${colors.bg} px-1 py-0.5 text-center`}>
+        <p className="text-white font-extrabold text-[8px] truncate leading-tight">{card.name}</p>
+      </div>
+      <div className="bg-white flex items-center justify-center py-2">
+        <CardMonster cardId={card.id} className="w-[52px] h-[52px]" />
+      </div>
+      <div className={`bg-gradient-to-t ${colors.bg} px-1 py-0.5 text-center`}>
+        <span className="text-[9px]">
+          {'⭐'.repeat(stars)}{'☆'.repeat(3 - stars)}
+        </span>
+      </div>
+    </button>
+  );
+}
+
+// ── Carte verrouillée ─────────────────────────────────────────────────────────
+function LockedCard({ onTap }: { onTap: () => void }) {
+  return (
+    <button
+      onClick={onTap}
+      className="flex-shrink-0 w-[88px] rounded-xl border-2 border-gray-300 overflow-hidden active:scale-95 transition-transform shadow-sm"
+    >
+      <div className="bg-gray-300 px-1 py-0.5 text-center">
+        <p className="text-gray-500 font-extrabold text-[8px]">???</p>
+      </div>
+      <div className="bg-gradient-to-b from-gray-200 to-gray-300 flex flex-col items-center justify-center py-2 gap-0.5 h-[62px]">
+        <span className="text-2xl">🔒</span>
+        <p className="text-[9px] text-gray-500 font-semibold">Débloque !</p>
+      </div>
+      <div className="bg-gray-300 px-1 py-0.5 text-center">
+        <span className="text-[9px] text-gray-400">☆☆☆</span>
+      </div>
+    </button>
+  );
+}
 
 // ── Badge notification popup ───────────────────────────────────────────────────
 function BadgeNotification({ badge, onDone }: { badge: Achievement; onDone: () => void }) {
@@ -112,21 +149,20 @@ const Index = () => {
   const navigate = useNavigate();
   const {
     markCorrect, getStars, stats, resetProgress, isDailyDone,
-    pendingBadges, clearPendingBadges,
+    pendingBadges, clearPendingBadges, ownedCards,
     xp, streak, level, levelName, levelProgress,
   } = useProgress();
   const { profile, saveProfile } = useProfile();
   const { playSuccess, playBadge, playLevelUp } = useSound();
 
-  const [subjectFilter, setSubjectFilter] = useState<SubjectFilter>('all');
-  const [levelFilter, setLevelFilter] = useState<LevelFilter>('all');
-  const [search, setSearch] = useState('');
   const [showReset, setShowReset] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
   const [showBadges, setShowBadges] = useState(false);
   const [currentBadge, setCurrentBadge] = useState<Achievement | null>(null);
   const [xpToast, setXpToast] = useState<number | null>(null);
   const [levelUpData, setLevelUpData] = useState<{ level: number; name: string } | null>(null);
+  const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
+  const [lockedHint, setLockedHint] = useState(false);
 
   const prevLevelRef = useRef(level);
   const badgeQueueRef = useRef<Achievement[]>([]);
@@ -164,6 +200,13 @@ const Index = () => {
     }
   }, [level, levelName]);
 
+  // Masquer le hint carte verrouillée
+  useEffect(() => {
+    if (!lockedHint) return;
+    const t = setTimeout(() => setLockedHint(false), 2500);
+    return () => clearTimeout(t);
+  }, [lockedHint]);
+
   const handleCorrectAnswer = (cardId: string, attackIdx: number) => {
     markCorrect(cardId, attackIdx);
     setShowConfetti(true);
@@ -176,17 +219,7 @@ const Index = () => {
     return <PlayerSetup onSave={saveProfile} />;
   }
 
-  const filtered = cards.filter((c) => {
-    const matchSubject = subjectFilter === 'all' || c.subject === subjectFilter;
-    const matchLevel = levelFilter === 'all' || c.level === levelFilter;
-    const q = search.toLowerCase();
-    const matchSearch =
-      q === '' ||
-      c.name.toLowerCase().includes(q) ||
-      c.description.toLowerCase().includes(q) ||
-      SUBJECT_LABELS[c.subject].toLowerCase().includes(q);
-    return matchSubject && matchLevel && matchSearch;
-  });
+  const selectedCard = selectedCardId ? cards.find((c) => c.id === selectedCardId) ?? null : null;
 
   const handleReset = () => {
     resetProgress();
@@ -212,6 +245,43 @@ const Index = () => {
       {/* XP toast */}
       {xpToast !== null && (
         <XpToast xp={xpToast} onDone={() => setXpToast(null)} />
+      )}
+
+      {/* Hint carte verrouillée */}
+      {lockedHint && (
+        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 pop-in pointer-events-none">
+          <div className="bg-gray-800 text-white text-xs font-semibold px-4 py-2 rounded-full shadow-lg whitespace-nowrap">
+            🔒 Joue en Entraînement pour débloquer !
+          </div>
+        </div>
+      )}
+
+      {/* Modal carte sélectionnée */}
+      {selectedCard && (
+        <div
+          className="fixed inset-0 z-40 bg-black/60 flex items-end justify-center page-fade"
+          onClick={() => setSelectedCardId(null)}
+        >
+          <div
+            className="max-h-[92vh] overflow-y-auto scrollbar-none pb-6 px-4 w-full max-w-sm slide-up"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-center mt-3 mb-2">
+              <div className="w-10 h-1 bg-white/40 rounded-full" />
+            </div>
+            <EducationalCard
+              card={selectedCard}
+              stars={getStars(selectedCard.id, selectedCard.attacks.length)}
+              onCorrectAnswer={(attackIdx) => handleCorrectAnswer(selectedCard.id, attackIdx)}
+            />
+            <button
+              onClick={() => setSelectedCardId(null)}
+              className="mt-3 w-full bg-white/20 text-white font-bold py-2.5 rounded-xl text-sm active:scale-95 transition-transform border border-white/30"
+            >
+              Fermer ✕
+            </button>
+          </div>
+        </div>
       )}
 
       {/* ── Sticky header ── */}
@@ -265,87 +335,28 @@ const Index = () => {
             </button>
           </div>
         </div>
-
-        {/* Filter strips */}
-        <div className="px-3 pb-2 space-y-1.5">
-          <div className="flex gap-2 overflow-x-auto pb-0.5 scrollbar-none">
-            {SUBJECT_OPTIONS.map((opt) => (
-              <button
-                key={opt.value}
-                onClick={() => setSubjectFilter(opt.value)}
-                className={`flex-shrink-0 px-3 py-1 rounded-full text-xs font-semibold transition-all border-2 ${
-                  subjectFilter === opt.value
-                    ? 'bg-white text-purple-700 border-white shadow'
-                    : 'bg-purple-700/40 text-white border-transparent'
-                }`}
-              >
-                {opt.emoji} {opt.label}
-              </button>
-            ))}
-          </div>
-          <div className="flex gap-2 overflow-x-auto pb-0.5 scrollbar-none">
-            {LEVEL_OPTIONS.map((opt) => (
-              <button
-                key={opt.value}
-                onClick={() => setLevelFilter(opt.value)}
-                className={`flex-shrink-0 px-3 py-1 rounded-full text-xs font-semibold transition-all border-2 ${
-                  levelFilter === opt.value
-                    ? 'bg-white text-blue-700 border-white shadow'
-                    : 'bg-blue-700/40 text-white border-transparent'
-                }`}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
-        </div>
       </header>
 
-      <main className="flex-1 px-3 py-3 flex flex-col gap-2">
-
-        {/* Search bar */}
-        <div className="relative">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none">
-            🔍
-          </span>
-          <input
-            type="search"
-            placeholder="Chercher une carte…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full bg-white rounded-xl border-2 border-gray-200 pl-8 pr-3 py-2 text-sm focus:outline-none focus:border-purple-400 shadow-sm"
-          />
-          {search && (
-            <button
-              onClick={() => setSearch('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg leading-none"
-            >
-              ×
-            </button>
-          )}
-        </div>
+      <main className="flex-1 px-3 py-3 flex flex-col gap-3">
 
         {/* Stats bar */}
         <div className="flex items-center gap-3 bg-white/70 rounded-xl px-3 py-1.5 text-xs text-gray-600 shadow-sm">
-          {/* Progress bar */}
           <div className="flex items-center gap-1.5 flex-1 min-w-0">
-            <span className="whitespace-nowrap font-semibold">📚 {stats.masteredCount}/{cards.length}</span>
+            <span className="whitespace-nowrap font-semibold">🃏 {ownedCards.length}/{cards.length}</span>
             <div className="flex-1 bg-gray-200 rounded-full h-2">
               <div
-                className="bg-yellow-400 h-2 rounded-full transition-all duration-500"
-                style={{ width: `${(stats.masteredCount / cards.length) * 100}%` }}
+                className="bg-purple-400 h-2 rounded-full transition-all duration-500"
+                style={{ width: `${(ownedCards.length / cards.length) * 100}%` }}
               />
             </div>
           </div>
 
-          {/* Battle wins */}
           {stats.battleTotal > 0 && (
             <span className="whitespace-nowrap font-semibold flex-shrink-0">
               ⚔️ {stats.battleWins}/{stats.battleTotal}
             </span>
           )}
 
-          {/* Badges button */}
           <button
             onClick={() => setShowBadges((v) => !v)}
             className="flex-shrink-0 font-semibold text-purple-600 border border-purple-200 rounded-full px-2 py-0.5 text-[10px] active:scale-95 transition-transform"
@@ -353,7 +364,6 @@ const Index = () => {
             🏅 Badges
           </button>
 
-          {/* Espace Parents */}
           <button
             onClick={() => navigate('/parents')}
             className="flex-shrink-0 text-gray-400 text-base leading-none"
@@ -362,7 +372,6 @@ const Index = () => {
             👨‍👩‍👧
           </button>
 
-          {/* Reset */}
           <button
             onClick={() => setShowReset(true)}
             className="flex-shrink-0 text-gray-400 text-base leading-none"
@@ -408,7 +417,7 @@ const Index = () => {
         </button>
 
         {/* Badges panel */}
-        {showBadges && <BadgesPanel unlockedBadges={[]} currentUnlocked={[]} />}
+        {showBadges && <BadgesPanel />}
 
         {/* Reset confirmation */}
         {showReset && (
@@ -431,50 +440,99 @@ const Index = () => {
           </div>
         )}
 
-        {/* Card count */}
-        <p className="text-center text-xs text-gray-500">
-          {filtered.length} carte{filtered.length !== 1 ? 's' : ''}
-          {search && ` pour "${search}"`}
-        </p>
+        {/* ── Ma Collection ── */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-sm font-extrabold text-gray-700">🃏 Ma Collection</h2>
+            <span className="text-xs text-gray-400">{ownedCards.length}/{cards.length} cartes</span>
+          </div>
 
-        {/* Cards grid */}
-        {filtered.length === 0 ? (
-          <div className="text-center py-20 text-gray-400">
-            <span className="text-5xl block mb-4">{search ? '🔍' : '🃏'}</span>
-            <p>{search ? `Aucune carte pour "${search}"` : 'Aucune carte pour cette sélection.'}</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-            {filtered.map((card, idx) => (
-              <div
-                key={card.id}
-                className="card-enter"
-                style={{ animationDelay: `${Math.min(idx * 40, 600)}ms` }}
+          {/* Bannière vide */}
+          {ownedCards.length === 0 && (
+            <div className="bg-gradient-to-r from-indigo-50 to-purple-50 border-2 border-indigo-200 rounded-2xl px-4 py-4 mb-3 text-center slide-up">
+              <div className="text-3xl mb-2">🃏</div>
+              <p className="font-extrabold text-sm text-indigo-700">Ta collection est vide !</p>
+              <p className="text-xs text-indigo-500 mt-1">
+                Joue en mode Entraînement<br />pour gagner tes premières cartes
+              </p>
+              <button
+                onClick={() => navigate('/entrainement')}
+                className="mt-3 bg-indigo-500 text-white font-extrabold px-4 py-2 rounded-full text-xs active:scale-95 transition-transform shadow-md"
               >
-                <EducationalCard
-                  card={card}
-                  stars={getStars(card.id, card.attacks.length)}
-                  onCorrectAnswer={(attackIdx) => handleCorrectAnswer(card.id, attackIdx)}
-                />
+                🌱 Commencer l'entraînement
+              </button>
+            </div>
+          )}
+
+          {/* Piles par matière */}
+          {COLLECTION_SUBJECTS.map((subject) => {
+            const subCards = cards.filter((c) => c.subject === subject.value);
+            const ownedInSubject = subCards.filter((c) => ownedCards.includes(c.id));
+            const lockedInSubject = subCards.filter((c) => !ownedCards.includes(c.id));
+            const isComplete = lockedInSubject.length === 0;
+
+            return (
+              <div key={subject.value} className="mb-5">
+                {/* En-tête matière */}
+                <div className="flex items-center gap-2 mb-1.5">
+                  <span className="text-base">{subject.emoji}</span>
+                  <span className="font-extrabold text-xs text-gray-700">{subject.label}</span>
+                  {isComplete && (
+                    <span className="text-[9px] font-extrabold text-green-600 bg-green-100 px-1.5 py-0.5 rounded-full">
+                      ✓ Complet !
+                    </span>
+                  )}
+                  <div className="flex-1 bg-gray-200 rounded-full h-1.5 mx-1">
+                    <div
+                      className={`h-1.5 rounded-full transition-all duration-700 ${subject.progressBg}`}
+                      style={{ width: `${(ownedInSubject.length / subCards.length) * 100}%` }}
+                    />
+                  </div>
+                  <span className="text-[10px] text-gray-500 flex-shrink-0">
+                    {ownedInSubject.length}/{subCards.length}
+                  </span>
+                </div>
+
+                {/* Rangée de cartes */}
+                <div className="flex gap-2 overflow-x-auto scrollbar-none pb-1">
+                  {[...ownedInSubject, ...lockedInSubject].map((card) => {
+                    const isOwned = ownedCards.includes(card.id);
+                    if (isOwned) {
+                      return (
+                        <MiniCard
+                          key={card.id}
+                          card={card}
+                          stars={getStars(card.id, card.attacks.length)}
+                          onTap={() => setSelectedCardId(card.id)}
+                        />
+                      );
+                    }
+                    return (
+                      <LockedCard
+                        key={card.id}
+                        onTap={() => setLockedHint(true)}
+                      />
+                    );
+                  })}
+                </div>
               </div>
-            ))}
-          </div>
-        )}
+            );
+          })}
+        </div>
       </main>
 
       <footer className="text-center py-3 text-gray-400 text-[10px]">
         Pokedex-Pals — Jeu éducatif pour les élèves du primaire 🎓
-        <span className="ml-2 bg-gray-100 text-gray-400 px-1.5 py-0.5 rounded font-mono">v1.5.0</span>
+        <span className="ml-2 bg-gray-100 text-gray-400 px-1.5 py-0.5 rounded font-mono">v1.6.0</span>
       </footer>
     </div>
   );
 };
 
 // ── Badges panel (mini vue) ────────────────────────────────────────────────────
-import { ACHIEVEMENTS } from '../data/achievements';
 import { useProgress as useProgressForBadges } from '../hooks/useProgress';
 
-function BadgesPanel({ unlockedBadges: _u, currentUnlocked: _c }: { unlockedBadges: string[]; currentUnlocked: string[] }) {
+function BadgesPanel() {
   const { unlockedBadges } = useProgressForBadges();
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-3 py-3 slide-up">
