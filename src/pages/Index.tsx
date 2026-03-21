@@ -420,6 +420,7 @@ const Index = () => {
 
       <footer className="text-center py-3 text-gray-400 text-[10px]">
         Pokedex-Pals — Jeu éducatif pour les élèves du primaire 🎓
+        <span className="ml-2 bg-gray-100 text-gray-400 px-1.5 py-0.5 rounded font-mono">v1.3.0</span>
       </footer>
     </div>
   );
