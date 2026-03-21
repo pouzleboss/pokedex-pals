@@ -5,27 +5,25 @@ import { CardMonster } from '../components/CardMonster';
 import { PlayerSetup } from '../components/PlayerSetup';
 import { Confetti } from '../components/Confetti';
 import { cards } from '../data/cards';
-import { Subject, SUBJECT_LABELS, SUBJECT_COLORS, EducationalCard as CardType } from '../types/game';
+import { Subject, SUBJECT_COLORS, EducationalCard as CardType } from '../types/game';
 import { useProgress } from '../hooks/useProgress';
-import { useProfile } from '../hooks/useProfile';
+import { useProfile, ProfileEntry } from '../hooks/useProfile';
 import { useSound } from '../hooks/useSound';
 import { Achievement, ACHIEVEMENTS } from '../data/achievements';
 
+// ── Helpers ────────────────────────────────────────────────────────────────────
 function getTimeGreeting(name: string): { emoji: string; text: string; tip: string } {
   const h = new Date().getHours();
   if (h >= 5 && h < 12) return {
-    emoji: '☀️',
-    text: `Bonjour ${name} !`,
+    emoji: '☀️', text: `Bonjour ${name} !`,
     tip: 'Un bon début de journée commence par réviser une carte 🃏',
   };
   if (h >= 12 && h < 18) return {
-    emoji: '🌤️',
-    text: `Bon après-midi ${name} !`,
+    emoji: '🌤️', text: `Bon après-midi ${name} !`,
     tip: "C'est le bon moment pour un Quiz Chrono ⏱️",
   };
   return {
-    emoji: '🌙',
-    text: `Bonsoir ${name} !`,
+    emoji: '🌙', text: `Bonsoir ${name} !`,
     tip: 'Une petite bataille avant de dormir ? ⚔️',
   };
 }
@@ -38,6 +36,90 @@ const COLLECTION_SUBJECTS: { value: Subject; label: string; emoji: string; progr
   { value: 'géographie', label: 'Géographie',  emoji: '🗺️', progressBg: 'bg-teal-400'   },
 ];
 
+// ── Sélecteur de profil (bottom sheet) ────────────────────────────────────────
+function ProfileSwitcherModal({
+  profiles, currentId, onSwitch, onAdd, onDelete, onClose,
+}: {
+  profiles: ProfileEntry[];
+  currentId: string | null;
+  onSwitch: (id: string) => void;
+  onAdd: () => void;
+  onDelete: (id: string) => void;
+  onClose: () => void;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-black/50 flex items-end page-fade"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white w-full rounded-t-3xl px-4 pt-4 pb-8 slide-up"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex justify-center mb-3">
+          <div className="w-10 h-1 bg-gray-200 rounded-full" />
+        </div>
+        <p className="text-xs font-extrabold text-gray-500 uppercase tracking-wider mb-3">
+          Changer d'élève
+        </p>
+
+        <div className="flex flex-col gap-2 mb-4">
+          {profiles.map(p => {
+            const isActive = p.id === currentId;
+            return (
+              <div
+                key={p.id}
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-2xl border-2 transition-all ${
+                  isActive
+                    ? 'border-purple-500 bg-purple-50'
+                    : 'border-gray-100 bg-gray-50 active:bg-gray-100'
+                }`}
+              >
+                <button
+                  className="flex items-center gap-3 flex-1 text-left"
+                  onClick={() => { onSwitch(p.id); onClose(); }}
+                >
+                  <div className="w-10 h-10 rounded-full overflow-hidden bg-white border border-gray-200 flex-shrink-0 flex items-center justify-center">
+                    <CardMonster cardId={p.avatarCardId} className="w-9 h-9" />
+                  </div>
+                  <span className={`font-extrabold text-sm ${isActive ? 'text-purple-700' : 'text-gray-700'}`}>
+                    {p.name}
+                  </span>
+                  {isActive && (
+                    <span className="text-[9px] font-bold bg-purple-500 text-white px-1.5 py-0.5 rounded-full ml-auto">
+                      Actif
+                    </span>
+                  )}
+                </button>
+                {!isActive && profiles.length > 1 && (
+                  <button
+                    onClick={() => {
+                      if (confirm(`Supprimer le profil de ${p.name} ? Toute sa progression sera perdue.`)) {
+                        onDelete(p.id);
+                      }
+                    }}
+                    className="text-gray-300 hover:text-red-400 transition-colors p-1 flex-shrink-0"
+                    title={`Supprimer ${p.name}`}
+                  >
+                    🗑️
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        <button
+          onClick={onAdd}
+          className="w-full bg-gradient-to-r from-purple-500 to-blue-500 text-white font-extrabold py-3 rounded-2xl text-sm active:scale-95 transition-transform shadow-md"
+        >
+          + Ajouter un élève
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ── Mini card (possédée) ───────────────────────────────────────────────────────
 function MiniCard({ card, stars, onTap }: { card: CardType; stars: 0 | 1 | 2 | 3; onTap: () => void }) {
   const colors = SUBJECT_COLORS[card.subject];
@@ -47,9 +129,7 @@ function MiniCard({ card, stars, onTap }: { card: CardType; stars: 0 | 1 | 2 | 3
       onClick={onTap}
       className={`flex-shrink-0 w-[88px] rounded-xl border-2 ${colors.border} overflow-hidden active:scale-95 transition-transform shadow-md relative`}
     >
-      {isMastered && (
-        <div className="absolute inset-0 card-mastered-shimmer z-10 rounded-xl pointer-events-none" />
-      )}
+      {isMastered && <div className="absolute inset-0 card-mastered-shimmer z-10 rounded-xl pointer-events-none" />}
       <div className={`bg-gradient-to-b ${colors.bg} px-1 py-0.5 text-center`}>
         <p className="text-white font-extrabold text-[8px] truncate leading-tight">{card.name}</p>
       </div>
@@ -57,15 +137,12 @@ function MiniCard({ card, stars, onTap }: { card: CardType; stars: 0 | 1 | 2 | 3
         <CardMonster cardId={card.id} className="w-[52px] h-[52px]" />
       </div>
       <div className={`bg-gradient-to-t ${colors.bg} px-1 py-0.5 text-center`}>
-        <span className="text-[9px]">
-          {'⭐'.repeat(stars)}{'☆'.repeat(3 - stars)}
-        </span>
+        <span className="text-[9px]">{'⭐'.repeat(stars)}{'☆'.repeat(3 - stars)}</span>
       </div>
     </button>
   );
 }
 
-// ── Carte verrouillée ─────────────────────────────────────────────────────────
 function LockedCard({ onTap }: { onTap: () => void }) {
   return (
     <button
@@ -86,13 +163,9 @@ function LockedCard({ onTap }: { onTap: () => void }) {
   );
 }
 
-// ── Badge notification popup ───────────────────────────────────────────────────
+// ── Popups ─────────────────────────────────────────────────────────────────────
 function BadgeNotification({ badge, onDone }: { badge: Achievement; onDone: () => void }) {
-  useEffect(() => {
-    const t = setTimeout(onDone, 3200);
-    return () => clearTimeout(t);
-  }, [onDone]);
-
+  useEffect(() => { const t = setTimeout(onDone, 3200); return () => clearTimeout(t); }, [onDone]);
   return (
     <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 pop-in">
       <div className="bg-white rounded-2xl shadow-2xl border-2 border-yellow-300 px-5 py-3 flex items-center gap-3 max-w-[90vw]">
@@ -107,13 +180,8 @@ function BadgeNotification({ badge, onDone }: { badge: Achievement; onDone: () =
   );
 }
 
-// ── XP toast ──────────────────────────────────────────────────────────────────
 function XpToast({ xp, onDone }: { xp: number; onDone: () => void }) {
-  useEffect(() => {
-    const t = setTimeout(onDone, 1400);
-    return () => clearTimeout(t);
-  }, [onDone]);
-
+  useEffect(() => { const t = setTimeout(onDone, 1400); return () => clearTimeout(t); }, [onDone]);
   return (
     <div className="fixed top-20 right-4 z-50 pop-in pointer-events-none">
       <div className="bg-yellow-400 text-yellow-900 font-extrabold text-sm px-3 py-1.5 rounded-full shadow-lg">
@@ -123,12 +191,8 @@ function XpToast({ xp, onDone }: { xp: number; onDone: () => void }) {
   );
 }
 
-// ── Popup passage de niveau ────────────────────────────────────────────────────
 function LevelUpPopup({ level, levelName, onDone }: { level: number; levelName: string; onDone: () => void }) {
-  useEffect(() => {
-    const t = setTimeout(onDone, 3500);
-    return () => clearTimeout(t);
-  }, [onDone]);
+  useEffect(() => { const t = setTimeout(onDone, 3500); return () => clearTimeout(t); }, [onDone]);
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
       <div className="bg-gradient-to-br from-yellow-400 to-orange-400 rounded-3xl shadow-2xl px-8 py-6 flex flex-col items-center gap-2 pop-in pointer-events-auto max-w-[85vw]">
@@ -145,14 +209,20 @@ function LevelUpPopup({ level, levelName, onDone }: { level: number; levelName: 
   );
 }
 
-const Index = () => {
+// ── Contenu principal (remonte pour chaque profil via key=) ────────────────────
+function MainContent({
+  profile,
+  onShowProfileSwitcher,
+}: {
+  profile: ProfileEntry;
+  onShowProfileSwitcher: () => void;
+}) {
   const navigate = useNavigate();
   const {
     markCorrect, getStars, stats, resetProgress, isDailyDone,
     pendingBadges, clearPendingBadges, ownedCards,
     xp, streak, level, levelName, levelProgress,
   } = useProgress();
-  const { profile, saveProfile } = useProfile();
   const { playSuccess, playBadge, playLevelUp } = useSound();
 
   const [showReset, setShowReset] = useState(false);
@@ -168,7 +238,6 @@ const Index = () => {
   const badgeQueueRef = useRef<Achievement[]>([]);
   const showingBadgeRef = useRef(false);
 
-  // Afficher les badges en file d'attente
   useEffect(() => {
     if (pendingBadges.length > 0) {
       badgeQueueRef.current = [...badgeQueueRef.current, ...pendingBadges];
@@ -191,7 +260,6 @@ const Index = () => {
     setTimeout(showNextBadge, 300);
   }
 
-  // Détecter un passage de niveau → popup
   useEffect(() => {
     if (level > prevLevelRef.current) {
       prevLevelRef.current = level;
@@ -200,7 +268,6 @@ const Index = () => {
     }
   }, [level, levelName]);
 
-  // Masquer le hint carte verrouillée
   useEffect(() => {
     if (!lockedHint) return;
     const t = setTimeout(() => setLockedHint(false), 2500);
@@ -215,39 +282,18 @@ const Index = () => {
     setXpToast(5);
   };
 
-  if (!profile) {
-    return <PlayerSetup onSave={saveProfile} />;
-  }
-
-  const selectedCard = selectedCardId ? cards.find((c) => c.id === selectedCardId) ?? null : null;
-
-  const handleReset = () => {
-    resetProgress();
-    setShowReset(false);
-  };
+  const selectedCard = selectedCardId ? cards.find(c => c.id === selectedCardId) ?? null : null;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-100 via-blue-50 to-pink-100 flex flex-col">
       <Confetti active={showConfetti} duration={1800} />
 
-      {/* Badge notification */}
       {currentBadge && <BadgeNotification badge={currentBadge} onDone={onBadgeDone} />}
-
-      {/* Level-up popup */}
       {levelUpData && (
-        <LevelUpPopup
-          level={levelUpData.level}
-          levelName={levelUpData.name}
-          onDone={() => setLevelUpData(null)}
-        />
+        <LevelUpPopup level={levelUpData.level} levelName={levelUpData.name} onDone={() => setLevelUpData(null)} />
       )}
+      {xpToast !== null && <XpToast xp={xpToast} onDone={() => setXpToast(null)} />}
 
-      {/* XP toast */}
-      {xpToast !== null && (
-        <XpToast xp={xpToast} onDone={() => setXpToast(null)} />
-      )}
-
-      {/* Hint carte verrouillée */}
       {lockedHint && (
         <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 pop-in pointer-events-none">
           <div className="bg-gray-800 text-white text-xs font-semibold px-4 py-2 rounded-full shadow-lg whitespace-nowrap">
@@ -264,7 +310,7 @@ const Index = () => {
         >
           <div
             className="max-h-[92vh] overflow-y-auto scrollbar-none pb-6 px-4 w-full max-w-sm slide-up"
-            onClick={(e) => e.stopPropagation()}
+            onClick={e => e.stopPropagation()}
           >
             <div className="flex justify-center mt-3 mb-2">
               <div className="w-10 h-1 bg-white/40 rounded-full" />
@@ -272,7 +318,7 @@ const Index = () => {
             <EducationalCard
               card={selectedCard}
               stars={getStars(selectedCard.id, selectedCard.attacks.length)}
-              onCorrectAnswer={(attackIdx) => handleCorrectAnswer(selectedCard.id, attackIdx)}
+              onCorrectAnswer={attackIdx => handleCorrectAnswer(selectedCard.id, attackIdx)}
             />
             <button
               onClick={() => setSelectedCardId(null)}
@@ -284,25 +330,31 @@ const Index = () => {
         </div>
       )}
 
-      {/* ── Sticky header ── */}
+      {/* ── Header sticky ── */}
       <header className="sticky top-0 z-20 bg-gradient-to-r from-purple-600 to-blue-600 shadow-lg">
         <div className="flex items-center justify-between px-4 py-2.5">
-          <div className="flex-1 min-w-0">
-            {/* Nom + niveau */}
+          {/* Infos élève — tap pour changer */}
+          <button
+            onClick={onShowProfileSwitcher}
+            className="flex-1 min-w-0 text-left active:opacity-80 transition-opacity"
+          >
             <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0 overflow-hidden border border-white/30">
+                <CardMonster cardId={profile.avatarCardId} className="w-7 h-7" />
+              </div>
               <h1 className="text-base font-extrabold text-white leading-tight truncate">
-                🃏 {profile.name}
+                {profile.name}
               </h1>
+              <span className="text-white/60 text-[10px] flex-shrink-0">▾</span>
               <span className="bg-yellow-400 text-yellow-900 font-extrabold text-[10px] px-2 py-0.5 rounded-full flex-shrink-0">
                 Niv.{level}
               </span>
               {streak >= 2 && (
-                <span className="bg-orange-500 text-white font-extrabold text-[10px] px-2 py-0.5 rounded-full flex-shrink-0 flex items-center gap-0.5">
+                <span className="bg-orange-500 text-white font-extrabold text-[10px] px-2 py-0.5 rounded-full flex-shrink-0">
                   🔥{streak}
                 </span>
               )}
             </div>
-            {/* Barre XP */}
             <div className="flex items-center gap-1.5 mt-1">
               <div className="flex-1 bg-white/20 rounded-full h-1.5">
                 <div
@@ -312,7 +364,7 @@ const Index = () => {
               </div>
               <span className="text-purple-200 text-[10px] flex-shrink-0">{levelName}</span>
             </div>
-          </div>
+          </button>
 
           <div className="flex items-center gap-1.5 ml-2">
             <button
@@ -350,38 +402,32 @@ const Index = () => {
               />
             </div>
           </div>
-
           {stats.battleTotal > 0 && (
             <span className="whitespace-nowrap font-semibold flex-shrink-0">
               ⚔️ {stats.battleWins}/{stats.battleTotal}
             </span>
           )}
-
           <button
-            onClick={() => setShowBadges((v) => !v)}
+            onClick={() => setShowBadges(v => !v)}
             className="flex-shrink-0 font-semibold text-purple-600 border border-purple-200 rounded-full px-2 py-0.5 text-[10px] active:scale-95 transition-transform"
           >
             🏅 Badges
           </button>
-
           <button
             onClick={() => navigate('/parents')}
             className="flex-shrink-0 text-gray-400 text-base leading-none"
-            title="Espace parents"
           >
             👨‍👩‍👧
           </button>
-
           <button
             onClick={() => setShowReset(true)}
             className="flex-shrink-0 text-gray-400 text-base leading-none"
-            title="Réinitialiser la progression"
           >
             ⚙️
           </button>
         </div>
 
-        {/* Salutation personnalisée */}
+        {/* Salutation */}
         {(() => {
           const g = getTimeGreeting(profile.name);
           return (
@@ -395,7 +441,7 @@ const Index = () => {
           );
         })()}
 
-        {/* Daily challenge banner */}
+        {/* Défi du jour */}
         <button
           onClick={() => navigate('/quiz')}
           className={`w-full flex items-center gap-3 rounded-xl px-4 py-3 text-left active:scale-95 transition-transform shadow-sm ${
@@ -416,16 +462,16 @@ const Index = () => {
           {!isDailyDone && <span className="text-white font-bold text-lg flex-shrink-0">→</span>}
         </button>
 
-        {/* Badges panel */}
+        {/* Badges */}
         {showBadges && <BadgesPanel />}
 
-        {/* Reset confirmation */}
+        {/* Reset */}
         {showReset && (
           <div className="bg-red-50 border-2 border-red-200 rounded-xl px-4 py-3 text-sm slide-up">
-            <p className="font-semibold text-red-700 mb-2">Effacer toute la progression ?</p>
+            <p className="font-semibold text-red-700 mb-2">Effacer la progression de {profile.name} ?</p>
             <div className="flex gap-2">
               <button
-                onClick={handleReset}
+                onClick={() => { resetProgress(); setShowReset(false); }}
                 className="bg-red-500 text-white font-bold px-4 py-1.5 rounded-full text-xs active:scale-95"
               >
                 Oui, tout effacer
@@ -440,14 +486,13 @@ const Index = () => {
           </div>
         )}
 
-        {/* ── Ma Collection ── */}
+        {/* ── Collection ── */}
         <div>
           <div className="flex items-center justify-between mb-2">
             <h2 className="text-sm font-extrabold text-gray-700">🃏 Ma Collection</h2>
             <span className="text-xs text-gray-400">{ownedCards.length}/{cards.length} cartes</span>
           </div>
 
-          {/* Bannière vide */}
           {ownedCards.length === 0 && (
             <div className="bg-gradient-to-r from-indigo-50 to-purple-50 border-2 border-indigo-200 rounded-2xl px-4 py-4 mb-3 text-center slide-up">
               <div className="text-3xl mb-2">🃏</div>
@@ -464,16 +509,14 @@ const Index = () => {
             </div>
           )}
 
-          {/* Piles par matière */}
-          {COLLECTION_SUBJECTS.map((subject) => {
-            const subCards = cards.filter((c) => c.subject === subject.value);
-            const ownedInSubject = subCards.filter((c) => ownedCards.includes(c.id));
-            const lockedInSubject = subCards.filter((c) => !ownedCards.includes(c.id));
+          {COLLECTION_SUBJECTS.map(subject => {
+            const subCards = cards.filter(c => c.subject === subject.value);
+            const ownedInSubject = subCards.filter(c => ownedCards.includes(c.id));
+            const lockedInSubject = subCards.filter(c => !ownedCards.includes(c.id));
             const isComplete = lockedInSubject.length === 0;
 
             return (
               <div key={subject.value} className="mb-5">
-                {/* En-tête matière */}
                 <div className="flex items-center gap-2 mb-1.5">
                   <span className="text-base">{subject.emoji}</span>
                   <span className="font-extrabold text-xs text-gray-700">{subject.label}</span>
@@ -492,26 +535,18 @@ const Index = () => {
                     {ownedInSubject.length}/{subCards.length}
                   </span>
                 </div>
-
-                {/* Rangée de cartes */}
                 <div className="flex gap-2 overflow-x-auto scrollbar-none pb-1">
-                  {[...ownedInSubject, ...lockedInSubject].map((card) => {
+                  {[...ownedInSubject, ...lockedInSubject].map(card => {
                     const isOwned = ownedCards.includes(card.id);
-                    if (isOwned) {
-                      return (
-                        <MiniCard
-                          key={card.id}
-                          card={card}
-                          stars={getStars(card.id, card.attacks.length)}
-                          onTap={() => setSelectedCardId(card.id)}
-                        />
-                      );
-                    }
-                    return (
-                      <LockedCard
+                    return isOwned ? (
+                      <MiniCard
                         key={card.id}
-                        onTap={() => setLockedHint(true)}
+                        card={card}
+                        stars={getStars(card.id, card.attacks.length)}
+                        onTap={() => setSelectedCardId(card.id)}
                       />
+                    ) : (
+                      <LockedCard key={card.id} onTap={() => setLockedHint(true)} />
                     );
                   })}
                 </div>
@@ -523,13 +558,13 @@ const Index = () => {
 
       <footer className="text-center py-3 text-gray-400 text-[10px]">
         Pokedex-Pals — Jeu éducatif pour les élèves du primaire 🎓
-        <span className="ml-2 bg-gray-100 text-gray-400 px-1.5 py-0.5 rounded font-mono">v1.6.0</span>
+        <span className="ml-2 bg-gray-100 text-gray-400 px-1.5 py-0.5 rounded font-mono">v2.0.0</span>
       </footer>
     </div>
   );
-};
+}
 
-// ── Badges panel (mini vue) ────────────────────────────────────────────────────
+// ── Badges panel ───────────────────────────────────────────────────────────────
 import { useProgress as useProgressForBadges } from '../hooks/useProgress';
 
 function BadgesPanel() {
@@ -540,7 +575,7 @@ function BadgesPanel() {
         🏅 Badges — {unlockedBadges.length}/{ACHIEVEMENTS.length} débloqués
       </p>
       <div className="grid grid-cols-4 gap-2">
-        {ACHIEVEMENTS.map((ach) => {
+        {ACHIEVEMENTS.map(ach => {
           const unlocked = unlockedBadges.includes(ach.id);
           return (
             <div
@@ -559,5 +594,50 @@ function BadgesPanel() {
     </div>
   );
 }
+
+// ── Composant racine ───────────────────────────────────────────────────────────
+const Index = () => {
+  const { profiles, currentProfile, currentId, saveProfile, switchProfile, deleteProfile } = useProfile();
+  const [showSwitcher, setShowSwitcher] = useState(false);
+  const [addingProfile, setAddingProfile] = useState(false);
+
+  // Premier lancement : aucun profil
+  if (profiles.length === 0 || !currentProfile) {
+    return <PlayerSetup onSave={p => saveProfile(p)} />;
+  }
+
+  // Ajout d'un nouvel élève
+  if (addingProfile) {
+    return (
+      <PlayerSetup
+        onSave={p => {
+          saveProfile(p);
+          setAddingProfile(false);
+        }}
+      />
+    );
+  }
+
+  return (
+    <>
+      {showSwitcher && (
+        <ProfileSwitcherModal
+          profiles={profiles}
+          currentId={currentId}
+          onSwitch={id => { switchProfile(id); setShowSwitcher(false); }}
+          onAdd={() => { setShowSwitcher(false); setAddingProfile(true); }}
+          onDelete={id => deleteProfile(id, currentId)}
+          onClose={() => setShowSwitcher(false)}
+        />
+      )}
+      {/* key= force le remontage complet lors du changement d'élève */}
+      <MainContent
+        key={currentProfile.id}
+        profile={currentProfile}
+        onShowProfileSwitcher={() => setShowSwitcher(true)}
+      />
+    </>
+  );
+};
 
 export default Index;

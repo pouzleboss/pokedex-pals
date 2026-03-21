@@ -3,7 +3,16 @@ import { cards } from '../data/cards';
 import { Subject } from '../types/game';
 import { ACHIEVEMENTS, checkAchievement, Achievement, AchievementStats } from '../data/achievements';
 
-const STORAGE_KEY = 'pokedex-pals-progress-v2';
+const STORAGE_KEY_PREFIX = 'pokedex-pals-progress-v2';
+
+// Clé dynamique selon le profil actif
+function getStorageKey(): string {
+  try {
+    const profileId = localStorage.getItem('pokedex-pals-current-profile-v1');
+    if (profileId) return `${STORAGE_KEY_PREFIX}-${profileId}`;
+  } catch {}
+  return STORAGE_KEY_PREFIX; // Fallback pour l'ancienne structure
+}
 
 // ── Niveaux ───────────────────────────────────────────────────────────────────
 export const XP_LEVELS = [
@@ -64,12 +73,21 @@ const EMPTY: StoredProgress = {
 
 function load(): StoredProgress {
   try {
-    // Migration depuis v1
+    const key = getStorageKey();
+    // Migration depuis v1 (ancienne structure sans profil)
     const v1 = localStorage.getItem('pokedex-pals-progress-v1');
-    const v2 = localStorage.getItem(STORAGE_KEY);
-    if (!v2 && v1) {
+    const current = localStorage.getItem(key);
+    // Si la clé profilée n'existe pas mais que l'ancienne existe, migrer
+    if (!current && key === `${STORAGE_KEY_PREFIX}-default`) {
+      const legacy = localStorage.getItem(STORAGE_KEY_PREFIX);
+      if (legacy) {
+        localStorage.setItem(key, legacy);
+        return { ...EMPTY, ...JSON.parse(legacy) };
+      }
+    }
+    if (!current && v1) {
       const old = JSON.parse(v1);
-      const migrated: StoredProgress = {
+      return {
         ...EMPTY,
         cardAnswers: old.cardAnswers ?? {},
         battleWins: old.battleWins ?? 0,
@@ -77,15 +95,14 @@ function load(): StoredProgress {
         bestQuizScore: old.bestQuizScore ?? 0,
         dailyDone: old.dailyDone ?? [],
       };
-      return migrated;
     }
-    if (v2) return { ...EMPTY, ...JSON.parse(v2) };
+    if (current) return { ...EMPTY, ...JSON.parse(current) };
   } catch {}
   return { ...EMPTY };
 }
 
 function persist(data: StoredProgress) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  localStorage.setItem(getStorageKey(), JSON.stringify(data));
 }
 
 function todayKey(): string {
@@ -233,8 +250,7 @@ export function useProgress() {
   const isDailyDone = data.dailyDone.includes(todayKey());
 
   const resetProgress = useCallback(() => {
-    localStorage.removeItem(STORAGE_KEY);
-    localStorage.removeItem('pokedex-pals-progress-v1');
+    localStorage.removeItem(getStorageKey());
     setData({ ...EMPTY });
     setPendingBadges([]);
   }, []);
