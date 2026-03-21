@@ -1,8 +1,8 @@
 export type Subject = 'maths' | 'sciences' | 'histoire' | 'langues' | 'géographie';
 export type Difficulty = 'commun' | 'rare' | 'legendaire';
 
-// CE1=1, CE2=2, CM1=3, CM2=4
-export type SchoolLevel = 1 | 2 | 3 | 4;
+// CP=0, CE1=1, CE2=2, CM1=3, CM2=4
+export type SchoolLevel = 0 | 1 | 2 | 3 | 4;
 
 export interface Attack {
   name: string;
@@ -79,6 +79,7 @@ export const DIFFICULTY_STARS: Record<Difficulty, string> = {
 };
 
 export const LEVEL_LABELS: Record<SchoolLevel, string> = {
+  0: 'CP',
   1: 'CE1',
   2: 'CE2',
   3: 'CM1',
