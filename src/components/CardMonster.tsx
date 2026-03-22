@@ -486,8 +486,258 @@ function Grammix() {
   );
 }
 
+// ── GÉOGRAPHIE ───────────────────────────────────────────────────────────────
+function Septimos() {
+  // geo-01 · Continents · teal body, 7 bras colorés (un par continent)
+  const continentColors = ['#22c55e','#f59e0b','#3b82f6','#ef4444','#a855f7','#ec4899','#64748b'];
+  const angles = [270, 321, 12, 63, 114, 165, 216];
+  return face(
+    '#134e4a',
+    <>
+      {angles.map((deg, i) => {
+        const r = (deg * Math.PI) / 180;
+        return (
+          <line key={i}
+            x1={50 + Math.cos(r) * 27} y1={62 + Math.sin(r) * 22}
+            x2={50 + Math.cos(r) * 40} y2={62 + Math.sin(r) * 34}
+            stroke={continentColors[i]} strokeWidth="4" strokeLinecap="round"
+          />
+        );
+      })}
+      <ellipse cx="50" cy="62" rx="27" ry="22" fill="#2dd4bf" stroke="#0f766e" strokeWidth="2.5" />
+      <ellipse cx="50" cy="62" rx="27" ry="9" fill="none" stroke="#0f766e" strokeWidth="1" opacity="0.5" />
+      <line x1="50" y1="40" x2="50" y2="84" stroke="#0f766e" strokeWidth="1" opacity="0.5" />
+      <text x="50" y="68" textAnchor="middle" fontSize="10" fontWeight="bold" fill="#134e4a">×7</text>
+    </>,
+    <text x="50" y="22" textAnchor="middle" fontSize="12">🌍</text>,
+  );
+}
+
+function Oceanus() {
+  // geo-02 · Océans · blue wave monster, 5 crêtes
+  return face(
+    '#1e3a8a',
+    <>
+      <ellipse cx="50" cy="62" rx="27" ry="22" fill="#38bdf8" stroke="#0284c7" strokeWidth="2.5" />
+      {/* vagues sur le corps */}
+      <path d="M 28 58 Q 34 53 40 58 Q 46 63 52 58 Q 58 53 64 58 Q 70 63 74 60"
+        fill="none" stroke="#0369a1" strokeWidth="2" strokeLinecap="round" />
+      {/* 5 petits poissons/bulles */}
+      {[30,40,50,60,70].map((cx, i) => (
+        <circle key={i} cx={cx} cy={45} r="3" fill="#bae6fd" stroke="#0284c7" strokeWidth="1" />
+      ))}
+    </>,
+    <text x="50" y="22" textAnchor="middle" fontSize="12">🌊</text>,
+  );
+}
+
+function Hexagon() {
+  // geo-03 · L'Hexagone (France) · corps hexagonal tricolore
+  return face(
+    '#1e3a8a',
+    <>
+      <polygon points="50,40 68,51 68,73 50,84 32,73 32,51"
+        fill="#60a5fa" stroke="#1d4ed8" strokeWidth="2.5" />
+      {/* bandes tricolores */}
+      <clipPath id="hexClip">
+        <polygon points="50,40 68,51 68,73 50,84 32,73 32,51" />
+      </clipPath>
+      <rect x="32" y="40" width="12" height="44" fill="#2563eb" clipPath="url(#hexClip)" opacity="0.7" />
+      <rect x="56" y="40" width="12" height="44" fill="#dc2626" clipPath="url(#hexClip)" opacity="0.7" />
+      {/* béret rouge */}
+      <ellipse cx="50" cy="38" rx="13" ry="5" fill="#dc2626" stroke="#991b1b" strokeWidth="1.5" />
+      <circle cx="50" cy="34" r="3" fill="#991b1b" />
+    </>,
+  );
+}
+
+function Flagrix() {
+  // geo-04 · Capitales · body vert globe, drapeau en antenne
+  return face(
+    '#14532d',
+    <>
+      <ellipse cx="50" cy="62" rx="27" ry="22" fill="#34d399" stroke="#059669" strokeWidth="2.5" />
+      {/* lignes de globe */}
+      <ellipse cx="50" cy="62" rx="27" ry="9" fill="none" stroke="#059669" strokeWidth="1" opacity="0.7" />
+      <line x1="50" y1="40" x2="50" y2="84" stroke="#059669" strokeWidth="1" opacity="0.7" />
+      {/* drapeau antenne */}
+      <line x1="50" y1="38" x2="50" y2="25" stroke="#6b7280" strokeWidth="2" strokeLinecap="round" />
+      <rect x="50" y="25" width="16" height="10" rx="1" fill="#ef4444" />
+      <rect x="50" y="25" width="6" height="10" fill="#2563eb" />
+    </>,
+  );
+}
+
+function Fluvix() {
+  // geo-05 · Fleuves · serpent-fleuve légendaire
+  return face(
+    '#1e3a8a',
+    <>
+      {/* ondulation bleue derrière le corps */}
+      <path d="M 15 72 Q 28 60 41 70 Q 54 80 67 68 Q 78 58 86 65"
+        fill="none" stroke="#38bdf8" strokeWidth="8" strokeLinecap="round" opacity="0.6" />
+      <ellipse cx="50" cy="60" rx="26" ry="20" fill="#7dd3fc" stroke="#0284c7" strokeWidth="2.5" />
+      {/* gouttes d'eau */}
+      <path d="M 22 50 Q 20 45 22 40 Q 24 45 22 50 Z" fill="#38bdf8" />
+      <path d="M 78 50 Q 76 45 78 40 Q 80 45 78 50 Z" fill="#38bdf8" />
+    </>,
+    <text x="50" y="22" textAnchor="middle" fontSize="11">👑</text>,
+    'smart',
+  );
+}
+
 function DefaultMonster() {
   return face('#374151', <ellipse cx="50" cy="62" rx="27" ry="22" fill="#9ca3af" stroke="#374151" strokeWidth="2.5" />);
+}
+
+// ── NOUVELLES CARTES ──────────────────────────────────────────────────────────
+
+function Septix() {
+  // math-06 · Table de 7 · orange blob avec ×7
+  return face(
+    '#92400e',
+    <>
+      <ellipse cx="50" cy="62" rx="27" ry="22" fill="#fb923c" stroke="#ea580c" strokeWidth="2.5" />
+      <text x="50" y="68" textAnchor="middle" fontSize="14" fontWeight="bold" fill="#7c2d12">×7</text>
+    </>,
+    <>
+      <text x="22" y="34" textAnchor="middle" fontSize="11" fill="#ea580c" fontWeight="bold">7</text>
+      <text x="78" y="34" textAnchor="middle" fontSize="11" fill="#ea580c" fontWeight="bold">7</text>
+    </>,
+    'happy',
+  );
+}
+
+function Mesurix() {
+  // math-07 · Mesures · vert avec règle
+  return face(
+    '#14532d',
+    <>
+      <rect x="23" y="46" width="54" height="32" rx="8" fill="#4ade80" stroke="#16a34a" strokeWidth="2.5" />
+      <line x1="30" y1="68" x2="30" y2="74" stroke="#14532d" strokeWidth="2" />
+      <line x1="40" y1="70" x2="40" y2="74" stroke="#14532d" strokeWidth="1.5" />
+      <line x1="50" y1="68" x2="50" y2="74" stroke="#14532d" strokeWidth="2" />
+      <line x1="60" y1="70" x2="60" y2="74" stroke="#14532d" strokeWidth="1.5" />
+      <line x1="70" y1="68" x2="70" y2="74" stroke="#14532d" strokeWidth="2" />
+    </>,
+    <text x="50" y="22" textAnchor="middle" fontSize="12">📏</text>,
+    'smart',
+  );
+}
+
+function Corfix() {
+  // sci-06 · Corps Humain · rose avec cœur
+  return face(
+    '#9d174d',
+    <>
+      <ellipse cx="50" cy="62" rx="25" ry="22" fill="#f9a8d4" stroke="#ec4899" strokeWidth="2.5" />
+      <path d="M 50 70 C 50 70 39 62 39 56 C 39 52 42 50 45 51 C 47 52 50 54 50 54 C 50 54 53 52 55 51 C 58 50 61 52 61 56 C 61 62 50 70 50 70 Z" fill="#be185d" />
+    </>,
+    <text x="50" y="22" textAnchor="middle" fontSize="12">🫀</text>,
+    'happy',
+  );
+}
+
+function Matix() {
+  // sci-07 · États de la Matière · mi-solide mi-vapeur
+  return face(
+    '#164e63',
+    <>
+      <rect x="24" y="44" width="24" height="34" rx="6" fill="#38bdf8" stroke="#0284c7" strokeWidth="2" />
+      <ellipse cx="65" cy="62" rx="13" ry="13" fill="#e0f2fe" stroke="#7dd3fc" strokeWidth="2" opacity="0.85" />
+      <ellipse cx="74" cy="50" rx="8" ry="8" fill="#e0f2fe" stroke="#7dd3fc" strokeWidth="1.5" opacity="0.6" />
+      <ellipse cx="80" cy="42" rx="5" ry="5" fill="#e0f2fe" stroke="#7dd3fc" strokeWidth="1" opacity="0.4" />
+    </>,
+    undefined,
+    'smart',
+  );
+}
+
+function Athenos() {
+  // hist-06 · Grèce Antique · doré avec colonne
+  return face(
+    '#713f12',
+    <>
+      <ellipse cx="50" cy="62" rx="27" ry="22" fill="#fcd34d" stroke="#d97706" strokeWidth="2.5" />
+      <rect x="44" y="64" width="3" height="9" fill="#92400e" />
+      <rect x="49" y="64" width="3" height="9" fill="#92400e" />
+      <rect x="42" y="62" width="15" height="3" rx="1" fill="#78350f" />
+      <rect x="42" y="72" width="15" height="2" rx="1" fill="#78350f" />
+    </>,
+    <text x="50" y="22" textAnchor="middle" fontSize="12">🏺</text>,
+    'smart',
+  );
+}
+
+function Trenix() {
+  // hist-07 · Grande Guerre · gris ardoise avec colombe
+  return face(
+    '#1c1917',
+    <>
+      <ellipse cx="50" cy="62" rx="27" ry="22" fill="#78716c" stroke="#44403c" strokeWidth="2.5" />
+      <text x="50" y="70" textAnchor="middle" fontSize="16">🕊️</text>
+    </>,
+    <text x="50" y="22" textAnchor="middle" fontSize="10" fill="#57534e" fontWeight="bold">1914</text>,
+    'fierce',
+  );
+}
+
+function Accentus() {
+  // lang-06 · Accents · violet avec é à ê
+  return face(
+    '#4c1d95',
+    <>
+      <ellipse cx="50" cy="62" rx="27" ry="22" fill="#c084fc" stroke="#7c3aed" strokeWidth="2.5" />
+      <text x="37" y="70" textAnchor="middle" fontSize="15" fontWeight="bold" fill="#3b0764">é</text>
+      <text x="50" y="70" textAnchor="middle" fontSize="15" fontWeight="bold" fill="#3b0764">à</text>
+      <text x="63" y="70" textAnchor="middle" fontSize="15" fontWeight="bold" fill="#3b0764">ê</text>
+    </>,
+    undefined,
+    'smart',
+  );
+}
+
+function Phrasor() {
+  // lang-07 · Types de phrases · turquoise avec bulle
+  return face(
+    '#134e4a',
+    <>
+      <ellipse cx="50" cy="62" rx="27" ry="22" fill="#5eead4" stroke="#0d9488" strokeWidth="2.5" />
+      <ellipse cx="50" cy="52" rx="12" ry="7" fill="white" opacity="0.65" />
+      <path d="M 46 59 L 43 64 L 50 59" fill="white" opacity="0.65" />
+      <text x="50" y="56" textAnchor="middle" fontSize="9" fill="#0f766e" fontWeight="bold">?!</text>
+    </>,
+    undefined,
+    'happy',
+  );
+}
+
+function Montix() {
+  // geo-06 · Reliefs · vert montagne avec neige
+  return face(
+    '#14532d',
+    <>
+      <ellipse cx="50" cy="62" rx="27" ry="22" fill="#86efac" stroke="#16a34a" strokeWidth="2.5" />
+      <path d="M 30 75 L 42 59 L 50 68 L 59 56 L 70 75 Z" fill="#15803d" opacity="0.75" />
+      <path d="M 59 56 L 63 64 L 55 64 Z" fill="white" opacity="0.9" />
+    </>,
+    <text x="50" y="22" textAnchor="middle" fontSize="12">⛰️</text>,
+    'happy',
+  );
+}
+
+function Europix() {
+  // geo-07 · Europe · bleu UE avec étoiles
+  return face(
+    '#1e3a8a',
+    <>
+      <ellipse cx="50" cy="62" rx="27" ry="22" fill="#3b82f6" stroke="#1d4ed8" strokeWidth="2.5" />
+      <text x="50" y="58" textAnchor="middle" fontSize="9" fill="#fbbf24" fontWeight="bold">★ ★ ★</text>
+      <text x="50" y="68" textAnchor="middle" fontSize="9" fill="#fbbf24" fontWeight="bold">★ ★ ★</text>
+    </>,
+    <text x="50" y="22" textAnchor="middle" fontSize="12">🇪🇺</text>,
+    'smart',
+  );
 }
 
 // ── registry ──────────────────────────────────────────────────────────────────
@@ -497,21 +747,36 @@ const MONSTER_MAP: Record<string, () => React.ReactElement> = {
   'math-03': Geomix,
   'math-04': Soustrax,
   'math-05': Divix,
+  'math-06': Septix,
+  'math-07': Mesurix,
   'sci-01': Chlorox,
   'sci-02': Goutti,
   'sci-03': Orbitron,
   'sci-04': Sensix,
   'sci-05': Predatron,
+  'sci-06': Corfix,
+  'sci-07': Matix,
   'hist-01': Liberon,
   'hist-02': Grottok,
   'hist-03': Pharabot,
   'hist-04': Gallix,
   'hist-05': Chevalorn,
+  'hist-06': Athenos,
+  'hist-07': Trenix,
   'lang-01': Wooflex,
   'lang-02': Colorix,
   'lang-03': Verbix,
   'lang-04': Numbrix,
   'lang-05': Grammix,
+  'lang-06': Accentus,
+  'lang-07': Phrasor,
+  'geo-01': Septimos,
+  'geo-02': Oceanus,
+  'geo-03': Hexagon,
+  'geo-04': Flagrix,
+  'geo-05': Fluvix,
+  'geo-06': Montix,
+  'geo-07': Europix,
 };
 
 export function CardMonster({ cardId, className = 'w-full h-full' }: Props) {

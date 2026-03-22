@@ -88,12 +88,17 @@ export function EducationalCard({
           }`}
           style={{ backfaceVisibility: 'hidden' }}
         >
+          {/* Shimmer doré sur carte maîtrisée */}
+          {isMastered && (
+            <div className="absolute inset-0 z-20 rounded-2xl card-mastered-shimmer pointer-events-none" />
+          )}
+
           {/* Mastery badge */}
           {stars > 0 && (
             <div
               className={`absolute top-1 right-1 z-10 rounded-full px-1.5 py-0.5 text-[10px] font-extrabold shadow leading-none ${
                 isMastered
-                  ? 'bg-yellow-400 text-yellow-900'
+                  ? 'bg-yellow-400 text-yellow-900 star-pulse'
                   : 'bg-white/90 text-yellow-500 border border-yellow-300'
               }`}
             >
@@ -151,9 +156,9 @@ export function EducationalCard({
           </div>
 
           {/* Pied */}
-          <div className={`bg-gradient-to-b ${colors.bg} text-center py-0.5`}>
-            <span className="text-white text-[9px] font-medium opacity-80">
-              {isMastered ? '🏆 Maîtrisée !' : 'Appuie pour le quiz !'}
+          <div className={`bg-gradient-to-b ${colors.bg} text-center py-1`}>
+            <span className="text-white text-[9px] font-bold">
+              {isMastered ? '🏆 Carte maîtrisée !' : stars > 0 ? `⭐ En cours — retourne pour apprendre !` : '👆 Appuie pour le quiz !'}
             </span>
           </div>
         </div>
@@ -189,9 +194,9 @@ export function EducationalCard({
                   </p>
                   <p className="text-[10px] text-gray-700 mb-1.5">{attack.question}</p>
 
-                  <div className="grid grid-cols-2 gap-1">
+                  <div className="grid grid-cols-2 gap-1.5">
                     {attack.answers.map((ans, j) => {
-                      let btnStyle = 'bg-white border-gray-300 text-gray-700 active:scale-95';
+                      let btnStyle = 'bg-white border-gray-300 text-gray-700 active:scale-95 active:bg-purple-50';
                       if (isAnswered) {
                         if (j === attack.correctIndex)
                           btnStyle = 'bg-green-200 border-green-500 text-green-900 font-bold';
@@ -204,19 +209,19 @@ export function EducationalCard({
                           key={j}
                           disabled={isAnswered}
                           onClick={(e) => handleAnswer(e, i, j)}
-                          className={`border-2 rounded-lg px-1 py-1 text-[9px] text-left transition-all ${btnStyle}`}
+                          className={`border-2 rounded-xl px-1.5 py-2 text-[10px] text-left transition-all leading-tight ${btnStyle}`}
                         >
-                          <span className="font-bold">{String.fromCharCode(65 + j)}.</span> {ans}
+                          <span className="font-extrabold text-purple-500">{String.fromCharCode(65 + j)}.</span> {ans}
                         </button>
                       );
                     })}
                   </div>
 
                   {isAnswered && (
-                    <p className={`text-[9px] font-bold text-center mt-1 pop-in ${isCorrect ? 'text-green-600' : 'text-red-600'}`}>
+                    <p className={`text-[10px] font-extrabold text-center mt-1.5 pop-in ${isCorrect ? 'text-green-600' : 'text-red-600'}`}>
                       {isCorrect
-                        ? `✅ Correct ! +${attack.damage} dégâts`
-                        : `❌ Bonne réponse : ${String.fromCharCode(65 + attack.correctIndex)}`}
+                        ? `✅ Bravo ! +${attack.damage} 💥`
+                        : `❌ Réponse : ${String.fromCharCode(65 + attack.correctIndex)}`}
                     </p>
                   )}
                 </div>
