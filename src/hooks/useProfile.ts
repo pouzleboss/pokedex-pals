@@ -57,9 +57,9 @@ export function useProfile() {
   const currentProfile = profiles.find(p => p.id === currentId) ?? profiles[0] ?? null;
 
   // Créer ou mettre à jour un profil
-  const saveProfile = useCallback((p: { name: string; avatarCardId: string }, id?: string) => {
+  const saveProfile = useCallback((p: PlayerProfile, id?: string) => {
     const profileId = id ?? generateId();
-    const entry: ProfileEntry = { id: profileId, name: p.name, avatarCardId: p.avatarCardId };
+    const entry: ProfileEntry = { id: profileId, name: p.name, avatarCardId: p.avatarCardId, level: p.level };
     setProfiles(prev => {
       const updated = prev.find(x => x.id === profileId)
         ? prev.map(x => x.id === profileId ? entry : x)
